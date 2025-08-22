@@ -24,14 +24,17 @@ import { useApi } from '../../hooks/useApi';
 import patientService from '../../services/api/patientService';
 
 const PatientDashboard = () => {
+
+  console.log('Dashboard rendering');
+
   const { user } = useAuth();
   const { execute, loading } = useApi();
   
   const [dashboardData, setDashboardData] = useState({
     stats: {
-      totalCases: 0,
-      activeCases: 0,
-      completedCases: 0,
+      totalCases: 3,
+      activeCases: 2,
+      completedCases: 1,
       upcomingAppointments: 0
     },
     recentCases: [],

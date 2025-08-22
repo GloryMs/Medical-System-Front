@@ -27,7 +27,7 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  const from = location.state?.from?.pathname || '/';
+  const from = location.state?.from?.pathname || '/dashboard';
 
   const {
     register,
@@ -45,6 +45,7 @@ const Login = () => {
   const onSubmit = async (data) => {
     try {
       await login({ ...data, rememberMe });
+      console.log('Login successful, navigating to:', from);
       navigate(from, { replace: true });
     } catch (error) {
       setError('root', {

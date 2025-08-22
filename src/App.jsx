@@ -104,9 +104,10 @@ const AppContent = () => {
     <Router>
       <Routes>
         {/* Public Routes */}
-        <Route path="/login" element={
+        {/* <Route path="/login" element={
           isAuthenticated ? <Navigate to={getDefaultRoute()} /> : <Login />
-        } />
+        } /> */}
+        <Route path="/login" element={<Login />} />
         <Route path="/register" element={
           isAuthenticated ? <Navigate to={getDefaultRoute()} /> : <Register />
         } />

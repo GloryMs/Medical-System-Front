@@ -3,27 +3,31 @@ import { api } from './apiClient';
 const authService = {
   // Login with email and password
   login: async (credentials) => {
-    const response = await api.post('/api/auth/login', credentials);
+    const response = await api.post('/auth-service/api/auth/login', credentials);
     
     // Store tokens and user info
-    if (response.accessToken) {
-      localStorage.setItem('accessToken', response.accessToken);
-      localStorage.setItem('refreshToken', response.refreshToken);
-      localStorage.setItem('user', JSON.stringify(response.user));
+    if (response) {
+        localStorage.setItem('accessToken', response.token);
+        localStorage.setItem('refreshToken', response.refreshToken);
+        const userData = {
+        id: response.userId,
+        email: response.email,
+        role: response.role,
+      };
+      localStorage.setItem('user', JSON.stringify(userData));
     }
-    
     return response;
   },
 
   // Register new user
   register: async (userData) => {
-    const response = await api.post('/api/auth/register', userData);
+    const response = await api.post('/auth-service/api/auth/register', userData);
     return response;
   },
 
   // Google OAuth login
   googleLogin: async (googleToken) => {
-    const response = await api.post('/api/auth/google', { token: googleToken });
+    const response = await api.post('/auth-service/api/auth/google', { token: googleToken });
     
     // Store tokens and user info
     if (response.accessToken) {

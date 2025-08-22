@@ -21,7 +21,8 @@ export const useAuth = () => {
       try {
         if (authService.isAuthenticated()) {
           // Verify token is still valid
-          const userData = await authService.checkAuth();
+          //const userData = await authService.checkAuth();
+          const userData = authService.getCurrentUser();
           dispatch(setUser(userData));
         }
       } catch (error) {
