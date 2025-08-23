@@ -201,9 +201,9 @@ const PatientDashboard = () => {
               dashboardData.recentCases.slice(0, 3).map((case_) => (
                 <div key={case_.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                   <div className="flex-1">
-                    <h4 className="font-medium text-gray-900 mb-1">{case_.title}</h4>
+                    <h4 className="font-medium text-gray-900 mb-1">{case_.caseTitle}</h4>
                     <div className="flex items-center space-x-3 text-sm text-gray-600">
-                      <span>{case_.category}</span>
+                      <span>{case_.requiredSpecialization}</span>
                       <PriorityBadge priority={case_.urgencyLevel} size="sm" />
                       <span>•</span>
                       <span>{formatDate(case_.createdAt)}</span>

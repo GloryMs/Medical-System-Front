@@ -223,7 +223,7 @@ const patientService = {
 
   // Dashboard Data
   getDashboardData: async () => {
-    return await api.get('/patient-service/api/patients/dashboard');
+    return await api.get('/patient-service/api/patients/1/dashboard');
   },
 
   getDashboardStats: async () => {
