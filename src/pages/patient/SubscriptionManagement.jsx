@@ -44,7 +44,7 @@ import {
 import Card, { StatsCard, AlertCard } from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Badge, { StatusBadge } from '../../components/common/Badge';
-import Modal, { ConfirmationModal, FormModal } from '../../components/common/Modal';
+import Modal, { ConfirmModal, FormModal } from '../../components/common/Modal';
 import { useAuth } from '../../hooks/useAuth';
 import { useApi } from '../../hooks/useApi';
 import patientService from '../../services/api/patientService';
@@ -544,7 +544,7 @@ const SubscriptionManagement = () => {
                         </>
                       )}
 
-                      {!currentSubscription || currentSubscription.status !== 'active' && (
+                      {(!currentSubscription || currentSubscription.status !== 'active') && (
                         <Button
                           variant="primary"
                           icon={<Star className="w-4 h-4" />}
@@ -753,6 +753,470 @@ const SubscriptionManagement = () => {
                 >
                   <div className="p-6">
                     {paymentMethods.length > 0 ? (
-                      <div className
+                      <div className="space-y-4">
+                        {paymentMethods.map((method) => (
+                          <div key={method.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                            <div className="flex items-center space-x-3">
+                              <CreditCard className="w-8 h-8 text-gray-400" />
+                              <div>
+                                <div className="flex items-center space-x-2">
+                                  <span className="font-medium text-gray-900">
+                                    **** **** **** {method.lastFour}
+                                  </span>
+                                  {method.isDefault && (
+                                    <Badge variant="success" size="xs">Default</Badge>
+                                  )}
+                                </div>
+                                <div className="flex items-center space-x-2 text-sm text-gray-600">
+                                  <span>{method.brand?.toUpperCase()}</span>
+                                  <span>•</span>
+                                  <span>Expires {method.expiryMonth}/{method.expiryYear}</span>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center space-x-2">
+                              <button
+                                onClick={() => setShowCardDetails({
+                                  ...showCardDetails,
+                                  [method.id]: !showCardDetails[method.id]
+                                })}
+                                className="p-2 text-gray-400 hover:text-gray-600"
+                              >
+                                {showCardDetails[method.id] ? 
+                                  <EyeOff className="w-4 h-4" /> : 
+                                  <Eye className="w-4 h-4" />
+                                }
+                              </button>
+                              
+                              <button
+                                onClick={() => handleDeletePaymentMethod(method.id)}
+                                className="p-2 text-red-400 hover:text-red-600"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12">
+                        <CreditCard className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                        <p className="text-gray-600 mb-4">No payment methods added yet</p>
+                        <Button
+                          variant="primary"
+                          icon={<Plus className="w-4 h-4" />}
+                          onClick={() => setShowPaymentModal(true)}
+                        >
+                          Add Payment Method
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+
+                {/* Billing Information */}
+                <Card title="Billing Information">
+                  <div className="p-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-4">Billing Address</h4>
+                        <div className="space-y-2 text-sm text-gray-600">
+                          <p>{user?.profile?.firstName} {user?.profile?.lastName}</p>
+                          <p>{user?.profile?.address?.street}</p>
+                          <p>{user?.profile?.address?.city}, {user?.profile?.address?.state} {user?.profile?.address?.zipCode}</p>
+                          <p>{user?.profile?.address?.country}</p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          icon={<Edit className="w-4 h-4" />}
+                          className="mt-4"
+                          onClick={() => navigate('/patient/profile')}
+                        >
+                          Edit Address
+                        </Button>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-4">Billing Settings</h4>
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-600">Auto-renewal</span>
+                            <div className="flex items-center space-x-2">
+                              {currentSubscription?.autoRenew ? (
+                                <Unlock className="w-4 h-4 text-green-500" />
+                              ) : (
+                                <Lock className="w-4 h-4 text-red-500" />
+                              )}
+                              <span className="text-sm">
+                                {currentSubscription?.autoRenew ? 'Enabled' : 'Disabled'}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-600">Email receipts</span>
+                            <span className="text-sm">Enabled</span>
+                          </div>
+                          
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-600">Next billing date</span>
+                            <span className="text-sm">
+                              {currentSubscription?.nextBillingDate 
+                                ? formatDate(currentSubscription.nextBillingDate)
+                                : 'N/A'
+                              }
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Invoice Settings */}
+                <Card title="Invoice & Receipt Settings">
+                  <div className="p-6">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                        <div>
+                          <h4 className="font-medium text-gray-900">Email Notifications</h4>
+                          <p className="text-sm text-gray-600">
+                            Receive invoices and payment confirmations via email
+                          </p>
+                        </div>
+                        <button className="relative inline-flex flex-shrink-0 h-6 w-11 border-2 border-transparent rounded-full cursor-pointer transition-colors ease-in-out duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 bg-primary-600">
+                          <span className="pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition ease-in-out duration-200 translate-x-5"></span>
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                        <div>
+                          <h4 className="font-medium text-gray-900">SMS Notifications</h4>
+                          <p className="text-sm text-gray-600">
+                            Get payment reminders and confirmations via SMS
+                          </p>
+                        </div>
+                        <button className="relative inline-flex flex-shrink-0 h-6 w-11 border-2 border-transparent rounded-full cursor-pointer transition-colors ease-in-out duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 bg-gray-200">
+                          <span className="pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition ease-in-out duration-200 translate-x-0"></span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Cancellation */}
+                {currentSubscription?.status === 'active' && (
+                  <Card title="Subscription Management">
+                    <div className="p-6">
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                        <div className="flex items-start space-x-3">
+                          <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5" />
+                          <div>
+                            <h4 className="font-medium text-red-900">Cancel Subscription</h4>
+                            <p className="text-sm text-red-700 mt-1">
+                              Once cancelled, you'll lose access to all premium features at the end of your current billing period.
+                            </p>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="mt-3 border-red-300 text-red-700 hover:bg-red-50"
+                              onClick={() => setShowCancelModal(true)}
+                            >
+                              Cancel Subscription
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                )}
+              </div>
+            )}
+
+            {/* History Tab */}
+            {activeTab === 'history' && (
+              <div className="space-y-6">
+                <Card title="Subscription History">
+                  <div className="p-6">
+                    {subscriptionHistory.length > 0 ? (
+                      <div className="space-y-4">
+                        {subscriptionHistory.map((record, index) => (
+                          <div key={index} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                            <div className="flex items-center space-x-4">
+                              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                                record.type === 'subscription' ? 'bg-blue-100' :
+                                record.type === 'payment' ? 'bg-green-100' :
+                                record.type === 'refund' ? 'bg-yellow-100' :
+                                'bg-red-100'
+                              }`}>
+                                {record.type === 'subscription' && <Star className="w-5 h-5 text-blue-600" />}
+                                {record.type === 'payment' && <DollarSign className="w-5 h-5 text-green-600" />}
+                                {record.type === 'refund' && <RefreshCw className="w-5 h-5 text-yellow-600" />}
+                                {record.type === 'cancellation' && <X className="w-5 h-5 text-red-600" />}
+                              </div>
+                              
+                              <div>
+                                <h4 className="font-medium text-gray-900">{record.title}</h4>
+                                <p className="text-sm text-gray-600">{record.description}</p>
+                                <p className="text-xs text-gray-500">{formatDate(record.date)}</p>
+                              </div>
+                            </div>
+                            
+                            <div className="text-right">
+                              <div className="font-medium text-gray-900">${record.amount}</div>
+                              <div className="text-xs text-gray-500">{record.status}</div>
+                              {record.invoiceId && (
+                                <Button
+                                  size="xs"
+                                  variant="outline"
+                                  icon={<Download className="w-3 h-3" />}
+                                  className="mt-1"
+                                  onClick={() => patientService.downloadInvoice(record.invoiceId, `invoice-${record.invoiceId}.pdf`)}
+                                >
+                                  Invoice
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12">
+                        <History className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                        <p className="text-gray-600">No subscription history yet</p>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+
+                {/* Usage Statistics */}
+                <Card title="Usage Statistics">
+                  <div className="p-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-gray-900">12</div>
+                        <div className="text-sm text-gray-600">Cases Submitted</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-gray-900">8</div>
+                        <div className="text-sm text-gray-600">Consultations</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-gray-900">24</div>
+                        <div className="text-sm text-gray-600">Documents Uploaded</div>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+            )}
+          </div>
+        </Card>
+      </div>
+
+      {/* Upgrade Modal */}
+      <FormModal
+        show={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        title={currentSubscription?.status === 'active' ? 'Upgrade Subscription' : 'Subscribe to Plan'}
+        onSubmit={subscriptionForm.handleSubmit(handleSubscriptionUpgrade)}
+        loading={loading}
+      >
+        {selectedPlan && (
+          <div className="space-y-6">
+            <div className="bg-gray-50 rounded-lg p-4">
+              <div className="flex items-center space-x-3">
+                {getPlanIcon(selectedPlan.type)}
+                <div>
+                  <h3 className="font-semibold text-gray-900">{selectedPlan.name}</h3>
+                  <p className="text-sm text-gray-600">{selectedPlan.description}</p>
+                </div>
+              </div>
+              <div className="mt-3 flex items-baseline">
+                <span className="text-2xl font-bold text-gray-900">
+                  ${calculatePrice(selectedPlan).toFixed(0)}
+                </span>
+                <span className="text-gray-600 ml-1">
+                  /{billingCycle === 'yearly' ? 'year' : 'month'}
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Payment Method
+              </label>
+              <select
+                {...subscriptionForm.register('paymentMethod')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="">Select payment method</option>
+                {paymentMethods.map((method) => (
+                  <option key={method.id} value={method.id}>
+                    {method.brand?.toUpperCase()} ending in {method.lastFour}
+                  </option>
+                ))}
+              </select>
+              {subscriptionForm.formState.errors.paymentMethod && (
+                <p className="text-red-500 text-sm mt-1">
+                  {subscriptionForm.formState.errors.paymentMethod.message}
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                {...subscriptionForm.register('autoRenew')}
+                className="h-4 w-4 text-primary-600 rounded"
+              />
+              <label className="ml-2 text-sm text-gray-700">
+                Enable auto-renewal
+              </label>
+            </div>
+          </div>
+        )}
+      </FormModal>
+
+      {/* Cancel Modal */}
+      <ConfirmModal
+        show={showCancelModal}
+        onClose={() => setShowCancelModal(false)}
+        title="Cancel Subscription"
+        message="Are you sure you want to cancel your subscription? You'll lose access to all premium features at the end of your current billing period."
+        confirmText="Cancel Subscription"
+        confirmVariant="danger"
+        onConfirm={() => handleSubscriptionCancel('user_requested')}
+        loading={loading}
+      />
+
+      {/* Payment Method Modal */}
+      <FormModal
+        show={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        title="Add Payment Method"
+        onSubmit={paymentForm.handleSubmit(handleAddPaymentMethod)}
+        loading={loading}
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Payment Method Type
+            </label>
+            <select
+              {...paymentForm.register('type')}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+            >
+              <option value="">Select type</option>
+              <option value="credit_card">Credit Card</option>
+              <option value="debit_card">Debit Card</option>
+            </select>
+            {paymentForm.formState.errors.type && (
+              <p className="text-red-500 text-sm mt-1">
+                {paymentForm.formState.errors.type.message}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Cardholder Name
+            </label>
+            <input
+              type="text"
+              {...paymentForm.register('cardholderName')}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              placeholder="John Doe"
+            />
+            {paymentForm.formState.errors.cardholderName && (
+              <p className="text-red-500 text-sm mt-1">
+                {paymentForm.formState.errors.cardholderName.message}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Card Number
+            </label>
+            <input
+              type="text"
+              {...paymentForm.register('cardNumber')}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              placeholder="1234 5678 9012 3456"
+            />
+            {paymentForm.formState.errors.cardNumber && (
+              <p className="text-red-500 text-sm mt-1">
+                {paymentForm.formState.errors.cardNumber.message}
+              </p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Month
+              </label>
+              <select
+                {...paymentForm.register('expiryMonth')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="">MM</option>
+                {Array.from({ length: 12 }, (_, i) => (
+                  <option key={i + 1} value={String(i + 1).padStart(2, '0')}>
+                    {String(i + 1).padStart(2, '0')}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Year
+              </label>
+              <select
+                {...paymentForm.register('expiryYear')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="">YYYY</option>
+                {Array.from({ length: 10 }, (_, i) => {
+                  const year = new Date().getFullYear() + i;
+                  return (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                CVV
+              </label>
+              <input
+                type="text"
+                {...paymentForm.register('cvv')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                placeholder="123"
+                maxLength="4"
+              />
+            </div>
+          </div>
+
+          {(paymentForm.formState.errors.expiryMonth || paymentForm.formState.errors.expiryYear || paymentForm.formState.errors.cvv) && (
+            <div className="text-red-500 text-sm">
+              {paymentForm.formState.errors.expiryMonth?.message ||
+               paymentForm.formState.errors.expiryYear?.message ||
+               paymentForm.formState.errors.cvv?.message}
+            </div>
+          )}
+        </div>
+      </FormModal>
+    </div>
+  );
+};
 
 export default SubscriptionManagement;

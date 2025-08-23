@@ -38,7 +38,7 @@ const Sidebar = ({ open, onClose, userRole }) => {
           { name: 'Appointments', href: '/patient/appointments', icon: Calendar },
           { name: 'Notifications', href: '/patient/notifications', icon: Bell },
           { name: 'Payments & Billing', href: '/patient/payments', icon: CreditCard },
-          { name: 'Payment History', href: '/patient/payments/history', icon: Archive },
+          // { name: 'Payment History', href: '/patient/payments/history', icon: Archive },
           { name: 'Profile', href: '/patient/profile', icon: User },
           { name: 'Support & Complaints', href: '/patient/complaints', icon: MessageSquare },
           { name: 'Subscription', href: '/patient/subscription', icon: Settings },
