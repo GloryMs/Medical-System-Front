@@ -3,7 +3,7 @@ import { api } from './apiClient';
 const adminService = {
   // Dashboard and Analytics
   getDashboardStats: async () => {
-    return await api.get('/admin-service/api/admin/dashboard/stats');
+    return await api.get('/admin-service/api/admin/stats');
   },
 
   getSystemMetrics: async (period = 'month') => {

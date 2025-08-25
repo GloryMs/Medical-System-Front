@@ -27,7 +27,7 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  const from = location.state?.from?.pathname || '/dashboard';
+  const from = location.state?.from?.pathname || '/';
 
   const {
     register,
@@ -44,9 +44,34 @@ const Login = () => {
 
   const onSubmit = async (data) => {
     try {
-      await login({ ...data, rememberMe });
+      const response = await login({ ...data, rememberMe });
       console.log('Login successful, navigating to:', from);
-      navigate(from, { replace: true });
+
+      
+          // Navigate based on user role
+    const role = response.role;
+    let dashboardRoute = '/';
+    
+    switch(role) {
+      case 'PATIENT':
+        dashboardRoute = '/patient/dashboard';
+        break;
+      case 'DOCTOR':
+        dashboardRoute = '/doctor/dashboard';
+        break;
+      case 'ADMIN':
+        dashboardRoute = '/admin/dashboard';
+        break;
+      default:
+        dashboardRoute = '/';
+    }
+    
+    console.log('Navigating to:', dashboardRoute);
+    navigate(dashboardRoute, { replace: true });
+
+
+
+      //navigate(from, { replace: true });
     } catch (error) {
       setError('root', {
         type: 'manual',
