@@ -11,7 +11,7 @@ export const useSocket = () => {
   useEffect(() => {
     if (isAuthenticated && user) {
       // Initialize socket connection
-      socket = io(process.env.REACT_APP_WS_URL || 'ws://localhost:8080', {
+      socket = io(process.env.REACT_APP_WS_URL || 'ws://172.16.1.122:8080', { //'ws://localhost:8080'
         auth: {
           token: localStorage.getItem('accessToken'),
           userId: user.id,
