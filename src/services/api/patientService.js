@@ -158,7 +158,7 @@ const patientService = {
   // Complaints Management
   getComplaints: async (filters = {}) => {
     const params = new URLSearchParams(filters);
-    return await api.get(`/patient-service/api/patients/complaints?${params}`);
+    return await api.get(`/patient-service/api/patients/complaints`); //?${params}
   },
 
   getComplaintById: async (complaintId) => {

@@ -88,7 +88,6 @@ const PatientComplaints = () => {
   // Load data on component mount
   useEffect(() => {
     loadComplaints();
-    loadComplaintStats();
   }, []);
 
   // Filter complaints when filters change
@@ -100,17 +99,20 @@ const PatientComplaints = () => {
     try {
       const data = await execute(() => patientService.getComplaints());
       setComplaints(data || []);
+
+// Calculate stats from the complaints data
+    const complaintsData = data || [];
+    const stats = {
+      total: complaintsData.length,
+      open: complaintsData.filter(complaint => complaint.status === 'OPEN').length,
+      inProgress: complaintsData.filter(complaint => complaint.status === 'IN_PROGRESS').length,
+      resolved: complaintsData.filter(complaint => complaint.status === 'RESOLVED').length
+    };
+    
+    setStats(stats);
+
     } catch (error) {
       console.error('Failed to load complaints:', error);
-    }
-  };
-
-  const loadComplaintStats = async () => {
-    try {
-      const data = await execute(() => patientService.getComplaintStats());
-      setStats(data || {});
-    } catch (error) {
-      console.error('Failed to load complaint stats:', error);
     }
   };
 
