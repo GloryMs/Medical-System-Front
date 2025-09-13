@@ -46,26 +46,26 @@ const Header = ({ onMenuClick, user }) => {
   const getProfileLink = () => {
     switch (user?.role) {
       case 'PATIENT':
-        return '/patient/profile';
+        return '/app/patient/profile';
       case 'DOCTOR':
-        return '/doctor/profile';
+        return '/app/doctor/profile';
       case 'ADMIN':
-        return '/admin/settings';
+        return '/app/admin/settings';
       default:
-        return '/profile';
+        return '/app/profile';
     }
   };
 
   const getSettingsLink = () => {
     switch (user?.role) {
       case 'PATIENT':
-        return '/patient/subscription';
+        return '/app/patient/subscription';
       case 'DOCTOR':
-        return '/doctor/settings';
+        return '/app/doctor/settings';
       case 'ADMIN':
-        return '/admin/configuration';
+        return '/app/admin/configuration';
       default:
-        return '/settings';
+        return '/app/settings';
     }
   };
 
@@ -120,7 +120,7 @@ const Header = ({ onMenuClick, user }) => {
         <div className="flex items-center space-x-4">
           {/* Quick Actions based on role */}
           {user?.role === 'PATIENT' && (
-            <Link to="/patient/cases">
+            <Link to="/app/patient/cases">
               <Button variant="outline" size="sm">
                 New Case
               </Button>
@@ -128,7 +128,7 @@ const Header = ({ onMenuClick, user }) => {
           )}
           
           {user?.role === 'DOCTOR' && (
-            <Link to="/doctor/cases">
+            <Link to="/app/doctor/cases">
               <Button variant="outline" size="sm">
                 View Cases
               </Button>
@@ -199,7 +199,7 @@ const Header = ({ onMenuClick, user }) => {
                 
                 <div className="p-4 border-t border-gray-200">
                   <Link
-                    to={`/${user?.role?.toLowerCase()}/notifications`}
+                    to={`/app/${user?.role?.toLowerCase()}/notifications`}
                     className="block text-center text-sm text-primary-600 hover:text-primary-500"
                     onClick={() => setNotificationDropdownOpen(false)}
                   >

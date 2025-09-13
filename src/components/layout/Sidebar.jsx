@@ -20,10 +20,11 @@ import {
   Heart,
   DollarSign,
   MessageSquare,
-  Plus
+  Plus,
+  Settings2
 } from 'lucide-react';
 
-const Sidebar = ({ open, onClose, userRole }) => {
+const Sidebar = ({ open, onClose, userRole, userId }) => {
   const location = useLocation();
 
   const getNavigationItems = () => {
@@ -38,6 +39,7 @@ const Sidebar = ({ open, onClose, userRole }) => {
           { name: 'Complaints', href: '/app/patient/complaints', icon: AlertTriangle },
           { name: 'Profile', href: '/app/patient/profile', icon: User },
           { name: 'Subscription', href: '/app/patient/subscription', icon: Plus },
+          { name: 'Settings', href: '/app/patient/settings', icon: Settings },
         ];
       
       case 'DOCTOR':
@@ -164,17 +166,13 @@ const Sidebar = ({ open, onClose, userRole }) => {
 
           {/* Bottom section - Optional */}
           <div className="flex-shrink-0 flex border-t border-gray-200 p-4">
-            <div className="flex items-center">
-              <div>
-                <img
-                  className="inline-block h-9 w-9 rounded-full bg-gray-100"
-                  src="/api/placeholder/36/36"
-                  alt="User avatar"
-                />
+            <div className="flex items-center">              
+                <div className="inline-block h-9 w-9 rounded-full bg-gray-100 flex items-center justify-center">
+                  <User className="h-5 w-5 text-green-600" />              
               </div>
               <div className="ml-3">
                 <p className="text-sm font-medium text-gray-700 group-hover:text-gray-900">
-                  {userRole} User
+                  {userRole} User - Id: {userId}
                 </p>
                 <p className="text-xs font-medium text-gray-500 group-hover:text-gray-700">
                   Online

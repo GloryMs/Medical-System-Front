@@ -237,6 +237,7 @@ import PatientProfile from './pages/patient/PatientProfile';
 import PatientComplaints from './pages/patient/PatientComplaints';
 import ComplaintDetails from './pages/patient/ComplaintDetails';
 import SubscriptionManagement from './pages/patient/SubscriptionManagement';
+import PatientSettings from './pages/patient/PatientSettings';
 
 //Doctor Pages
 import DoctorDashboard from './pages/doctor/DoctorDashboard';
@@ -349,6 +350,7 @@ const AppContent = () => {
                 <Route path="complaints" element={<PatientComplaints />} />
                 <Route path="complaints/:id" element={<ComplaintDetails />} />
                 <Route path="subscription" element={<SubscriptionManagement />} />
+                <Route path="settings" element={<PatientSettings />} />
               </Routes>
             </ProtectedRoute>
           } />

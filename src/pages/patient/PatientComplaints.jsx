@@ -43,14 +43,13 @@ import { useAuth } from '../../hooks/useAuth';
 import { useApi } from '../../hooks/useApi';
 import patientService from '../../services/api/patientService';
 
-// Validation schema
+// Updated validation schema to match backend requirements
 const complaintSchema = yup.object({
-  type: yup.string().required('Complaint type is required'),
-  subject: yup.string().required('Subject is required').min(10, 'Subject must be at least 10 characters'),
+  complaintType: yup.string().required('Complaint type is required'),
   description: yup.string().required('Description is required').min(20, 'Description must be at least 20 characters'),
   priority: yup.string().required('Priority is required'),
-  relatedCaseId: yup.string().nullable(),
-  relatedDoctorId: yup.string().nullable()
+  doctorId: yup.string().nullable(),
+  caseId: yup.string().nullable()
 });
 
 const PatientComplaints = () => {
@@ -70,24 +69,26 @@ const PatientComplaints = () => {
   const [typeFilter, setTypeFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [sortBy, setSortBy] = useState('created_desc');
-  const [attachments, setAttachments] = useState([]);
+  const [cases, setCases] = useState([]);
+  const [doctors, setDoctors] = useState([]);
 
-  // Form setup
+  // Form setup with correct field names
   const complaintForm = useForm({
     resolver: yupResolver(complaintSchema),
     defaultValues: {
-      type: '',
-      subject: '',
+      complaintType: '',
       description: '',
-      priority: 'medium',
-      relatedCaseId: null,
-      relatedDoctorId: null
+      priority: 'MEDIUM',
+      doctorId: '',
+      caseId: ''
     }
   });
 
   // Load data on component mount
   useEffect(() => {
     loadComplaints();
+    loadCases();
+    loadDoctors();
   }, []);
 
   // Filter complaints when filters change
@@ -100,19 +101,36 @@ const PatientComplaints = () => {
       const data = await execute(() => patientService.getComplaints());
       setComplaints(data || []);
 
-// Calculate stats from the complaints data
-    const complaintsData = data || [];
-    const stats = {
-      total: complaintsData.length,
-      open: complaintsData.filter(complaint => complaint.status === 'OPEN').length,
-      inProgress: complaintsData.filter(complaint => complaint.status === 'IN_PROGRESS').length,
-      resolved: complaintsData.filter(complaint => complaint.status === 'RESOLVED').length
-    };
-    
-    setStats(stats);
-
+      // Calculate stats from the complaints data
+      const complaintsData = data || [];
+      const stats = {
+        total: complaintsData.length,
+        open: complaintsData.filter(complaint => complaint.status === 'OPEN').length,
+        inProgress: complaintsData.filter(complaint => complaint.status === 'IN_PROGRESS').length,
+        resolved: complaintsData.filter(complaint => complaint.status === 'RESOLVED').length
+      };
+      
+      setStats(stats);
     } catch (error) {
       console.error('Failed to load complaints:', error);
+    }
+  };
+
+  const loadCases = async () => {
+    try {
+      const data = await execute(() => patientService.getCases());
+      setCases(data || []);
+    } catch (error) {
+      console.error('Failed to load cases:', error);
+    }
+  };
+
+  const loadDoctors = async () => {
+    try {
+      const data = await execute(() => patientService.getDoctors());
+      setDoctors(data || []);
+    } catch (error) {
+      console.error('Failed to load doctors:', error);
     }
   };
 
@@ -122,25 +140,24 @@ const PatientComplaints = () => {
     // Search filter
     if (searchTerm) {
       filtered = filtered.filter(complaint =>
-        complaint.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
         complaint.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        complaint.complaintId.toLowerCase().includes(searchTerm.toLowerCase())
+        complaint.complaintId?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
     // Status filter
     if (statusFilter !== 'all') {
-      filtered = filtered.filter(complaint => complaint.status === statusFilter);
+      filtered = filtered.filter(complaint => complaint.status === statusFilter.toUpperCase());
     }
 
     // Type filter
     if (typeFilter !== 'all') {
-      filtered = filtered.filter(complaint => complaint.type === typeFilter);
+      filtered = filtered.filter(complaint => complaint.complaintType === typeFilter.toUpperCase());
     }
 
     // Priority filter
     if (priorityFilter !== 'all') {
-      filtered = filtered.filter(complaint => complaint.priority === priorityFilter);
+      filtered = filtered.filter(complaint => complaint.priority === priorityFilter.toUpperCase());
     }
 
     // Sort
@@ -153,7 +170,7 @@ const PatientComplaints = () => {
         case 'updated_desc':
           return new Date(b.updatedAt) - new Date(a.updatedAt);
         case 'priority_high':
-          const priorityOrder = { 'high': 3, 'medium': 2, 'low': 1 };
+          const priorityOrder = { 'CRITICAL': 4, 'HIGH': 3, 'MEDIUM': 2, 'LOW': 1 };
           return priorityOrder[b.priority] - priorityOrder[a.priority];
         case 'status':
           return a.status.localeCompare(b.status);
@@ -167,43 +184,31 @@ const PatientComplaints = () => {
 
   const handleCreateComplaint = async (data) => {
     try {
+      // Map form data to backend expected format
       const complaintData = {
-        ...data,
-        attachments: attachments
+        complaintType: data.complaintType,
+        description: data.description,
+        priority: data.priority,
+        doctorId: data.doctorId || null,
+        caseId: data.caseId || null
       };
       
       const newComplaint = await execute(() => patientService.createComplaint(complaintData));
       setComplaints([newComplaint, ...complaints]);
       setShowCreateModal(false);
       complaintForm.reset();
-      setAttachments([]);
       
       // Show success message
       alert('Complaint submitted successfully! You will receive updates via email.');
     } catch (error) {
       console.error('Failed to create complaint:', error);
+      alert('Failed to submit complaint. Please try again.');
     }
   };
 
   const handleViewComplaint = (complaint) => {
     setSelectedComplaint(complaint);
     setShowDetailsModal(true);
-  };
-
-  const handleFileUpload = (event) => {
-    const files = Array.from(event.target.files);
-    const newAttachments = files.map(file => ({
-      id: Date.now() + Math.random(),
-      file: file,
-      name: file.name,
-      size: file.size,
-      type: file.type
-    }));
-    setAttachments([...attachments, ...newAttachments]);
-  };
-
-  const removeAttachment = (id) => {
-    setAttachments(attachments.filter(att => att.id !== id));
   };
 
   const formatDate = (dateString) => {
@@ -216,23 +221,15 @@ const PatientComplaints = () => {
     });
   };
 
-  const formatFileSize = (bytes) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
-
   const getStatusIcon = (status) => {
     switch (status) {
-      case 'open':
+      case 'OPEN':
         return <AlertTriangle className="w-5 h-5 text-orange-500" />;
-      case 'in_progress':
+      case 'IN_PROGRESS':
         return <Clock className="w-5 h-5 text-blue-500" />;
-      case 'resolved':
+      case 'RESOLVED':
         return <CheckCircle className="w-5 h-5 text-green-500" />;
-      case 'closed':
+      case 'CLOSED':
         return <XCircle className="w-5 h-5 text-gray-500" />;
       default:
         return <MessageCircle className="w-5 h-5 text-gray-400" />;
@@ -241,11 +238,13 @@ const PatientComplaints = () => {
 
   const getPriorityColor = (priority) => {
     switch (priority) {
-      case 'high':
+      case 'CRITICAL':
+        return 'bg-red-600 text-white border-red-600';
+      case 'HIGH':
         return 'bg-red-100 text-red-800 border-red-200';
-      case 'medium':
+      case 'MEDIUM':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'low':
+      case 'LOW':
         return 'bg-green-100 text-green-800 border-green-200';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
@@ -254,33 +253,34 @@ const PatientComplaints = () => {
 
   const getTypeIcon = (type) => {
     switch (type) {
-      case 'technical':
+      case 'SYSTEM':
         return <AlertCircle className="w-4 h-4" />;
-      case 'billing':
+      case 'PAYMENT':
         return <FileText className="w-4 h-4" />;
-      case 'service':
+      case 'SERVICE':
         return <User className="w-4 h-4" />;
-      case 'quality':
+      case 'DOCTOR':
         return <Star className="w-4 h-4" />;
       default:
         return <MessageCircle className="w-4 h-4" />;
     }
   };
 
+  // Backend complaint types
   const complaintTypes = [
-    { value: 'technical', label: 'Technical Issue' },
-    { value: 'billing', label: 'Billing Problem' },
-    { value: 'service', label: 'Service Quality' },
-    { value: 'quality', label: 'Medical Care Quality' },
-    { value: 'appointment', label: 'Appointment Issue' },
-    { value: 'communication', label: 'Communication Problem' },
-    { value: 'other', label: 'Other' }
+    { value: 'DOCTOR', label: 'Doctor Related' },
+    { value: 'SYSTEM', label: 'System/Technical Issue' },
+    { value: 'PAYMENT', label: 'Payment Issue' },
+    { value: 'SERVICE', label: 'Service Quality' },
+    { value: 'OTHER', label: 'Other' }
   ];
 
+  // Backend priority levels
   const priorityLevels = [
-    { value: 'low', label: 'Low' },
-    { value: 'medium', label: 'Medium' },
-    { value: 'high', label: 'High' }
+    { value: 'LOW', label: 'Low' },
+    { value: 'MEDIUM', label: 'Medium' },
+    { value: 'HIGH', label: 'High' },
+    { value: 'CRITICAL', label: 'Critical' }
   ];
 
   const statusOptions = [
@@ -306,28 +306,23 @@ const PatientComplaints = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="py-6">
             <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">Support & Complaints</h1>
-                <p className="mt-1 text-sm text-gray-600">
-                  Submit and track your complaints and support requests
-                </p>
-              </div>
               <div className="flex items-center space-x-3">
-                <Button
-                  variant="outline"
-                  icon={<RefreshCw className="w-4 h-4" />}
-                  onClick={loadComplaints}
-                >
-                  Refresh
-                </Button>
-                <Button
-                  variant="primary"
-                  icon={<Plus className="w-4 h-4" />}
-                  onClick={() => setShowCreateModal(true)}
-                >
-                  New Complaint
-                </Button>
+                <AlertTriangle className="w-8 h-8 text-orange-600" />
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">My Complaints</h1>
+                  <p className="text-gray-600">Track and manage your submitted complaints</p>
+                </div>
               </div>
+              
+              {/* Create New Complaint Button - Fixed */}
+              <Button
+                variant="primary"
+                onClick={() => setShowCreateModal(true)}
+                disabled={loading}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                New Complaint
+              </Button>
             </div>
           </div>
         </div>
@@ -339,38 +334,34 @@ const PatientComplaints = () => {
           <StatsCard
             title="Total Complaints"
             value={stats.total || 0}
-            icon={<MessageCircle className="w-6 h-6" />}
-            className="bg-gradient-to-br from-blue-50 to-blue-100"
+            icon={<MessageCircle className="w-6 h-6 text-blue-600" />}
+            color="blue"
           />
-          
           <StatsCard
             title="Open"
             value={stats.open || 0}
-            icon={<AlertTriangle className="w-6 h-6" />}
-            className="bg-gradient-to-br from-orange-50 to-orange-100"
+            icon={<AlertTriangle className="w-6 h-6 text-orange-600" />}
+            color="orange"
           />
-          
           <StatsCard
             title="In Progress"
             value={stats.inProgress || 0}
-            icon={<Clock className="w-6 h-6" />}
-            className="bg-gradient-to-br from-blue-50 to-blue-100"
+            icon={<Clock className="w-6 h-6 text-blue-600" />}
+            color="blue"
           />
-          
           <StatsCard
             title="Resolved"
             value={stats.resolved || 0}
-            icon={<CheckCircle className="w-6 h-6" />}
-            className="bg-gradient-to-br from-green-50 to-green-100"
+            icon={<CheckCircle className="w-6 h-6 text-green-600" />}
+            color="green"
           />
         </div>
 
         {/* Filters and Search */}
         <Card className="mb-6">
           <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
-              {/* Search */}
-              <div className="lg:col-span-2">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <div>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <input
@@ -383,67 +374,55 @@ const PatientComplaints = () => {
                 </div>
               </div>
 
-              {/* Status Filter */}
-              <div>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                >
-                  {statusOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              >
+                {statusOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
 
-              {/* Type Filter */}
-              <div>
-                <select
-                  value={typeFilter}
-                  onChange={(e) => setTypeFilter(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                >
-                  <option value="all">All Types</option>
-                  {complaintTypes.map((type) => (
-                    <option key={type.value} value={type.value}>
-                      {type.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="all">All Types</option>
+                {complaintTypes.map((type) => (
+                  <option key={type.value} value={type.value.toLowerCase()}>
+                    {type.label}
+                  </option>
+                ))}
+              </select>
 
-              {/* Priority Filter */}
-              <div>
-                <select
-                  value={priorityFilter}
-                  onChange={(e) => setPriorityFilter(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                >
-                  <option value="all">All Priorities</option>
-                  {priorityLevels.map((priority) => (
-                    <option key={priority.value} value={priority.value}>
-                      {priority.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <select
+                value={priorityFilter}
+                onChange={(e) => setPriorityFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="all">All Priorities</option>
+                {priorityLevels.map((priority) => (
+                  <option key={priority.value} value={priority.value.toLowerCase()}>
+                    {priority.label}
+                  </option>
+                ))}
+              </select>
 
-              {/* Sort */}
-              <div>
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                >
-                  {sortOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              >
+                {sortOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         </Card>
@@ -454,65 +433,52 @@ const PatientComplaints = () => {
             {filteredComplaints.length > 0 ? (
               <div className="space-y-4">
                 {filteredComplaints.map((complaint) => (
-                  <div
-                    key={complaint.id}
-                    className="border border-gray-200 rounded-lg p-6 hover:border-primary-300 transition-colors"
-                  >
+                  <div key={complaint.id} className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center space-x-3 mb-2">
-                          {getStatusIcon(complaint.status)}
-                          <h3 className="text-lg font-semibold text-gray-900">
-                            {complaint.subject}
+                          {getTypeIcon(complaint.complaintType)}
+                          <h3 className="text-lg font-medium text-gray-900">
+                            {complaintTypes.find(t => t.value === complaint.complaintType)?.label || complaint.complaintType}
                           </h3>
-                          <Badge
-                            variant={complaint.status === 'resolved' ? 'success' : 
-                                   complaint.status === 'in_progress' ? 'primary' :
-                                   complaint.status === 'open' ? 'warning' : 'secondary'}
-                          >
-                            {complaint.status.replace('_', ' ')}
-                          </Badge>
                           <Badge className={getPriorityColor(complaint.priority)}>
-                            {complaint.priority} Priority
+                            {complaint.priority}
                           </Badge>
                         </div>
-
-                        <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
-                          <div className="flex items-center space-x-1">
-                            {getTypeIcon(complaint.type)}
-                            <span>{complaintTypes.find(t => t.value === complaint.type)?.label}</span>
-                          </div>
-                          <div className="flex items-center space-x-1">
-                            <Calendar className="w-4 h-4" />
-                            <span>{formatDate(complaint.createdAt)}</span>
-                          </div>
-                          <div className="flex items-center space-x-1">
-                            <FileText className="w-4 h-4" />
-                            <span>#{complaint.complaintId}</span>
-                          </div>
-                        </div>
-
-                        <p className="text-gray-700 mb-4 line-clamp-2">
+                        
+                        <p className="text-gray-700 mb-3 line-clamp-2">
                           {complaint.description}
                         </p>
-
-                        {complaint.assignedTo && (
-                          <div className="flex items-center space-x-2 text-sm text-gray-600">
-                            <User className="w-4 h-4" />
-                            <span>Assigned to: {complaint.assignedTo.name}</span>
-                          </div>
-                        )}
+                        
+                        <div className="flex items-center space-x-4 text-sm text-gray-500">
+                          <span className="flex items-center space-x-1">
+                            <Calendar className="w-4 h-4" />
+                            <span>{formatDate(complaint.createdAt)}</span>
+                          </span>
+                          {complaint.caseId && (
+                            <span>Case #{complaint.caseId}</span>
+                          )}
+                          {complaint.doctorId && (
+                            <span>Dr. {doctors.find(d => d.id === complaint.doctorId)?.name || 'Unknown'}</span>
+                          )}
+                        </div>
                       </div>
 
-                      <div className="flex items-center space-x-2 ml-4">
+                      <div className="flex items-center space-x-3 ml-4">
+                        <div className="flex items-center space-x-2">
+                          {getStatusIcon(complaint.status)}
+                          <StatusBadge status={complaint.status.toLowerCase()}>
+                            {complaint.status.replace('_', ' ')}
+                          </StatusBadge>
+                        </div>
+                        
                         <Button
                           size="sm"
                           variant="outline"
-                          icon={<Eye className="w-4 h-4" />}
-                          // onClick={() => handleViewComplaint(complaint)}
-                          onClick={() => navigate(`/patient/complaints/${complaint.id}`)}
+                          onClick={() => handleViewComplaint(complaint)}
                         >
-                          View Details
+                          <Eye className="w-4 h-4 mr-1" />
+                          View
                         </Button>
                       </div>
                     </div>
@@ -521,9 +487,10 @@ const PatientComplaints = () => {
               </div>
             ) : (
               <div className="text-center py-12">
-                <MessageCircle className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-600 mb-4">
-                  {complaints.length === 0 
+                <AlertTriangle className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No Complaints Found</h3>
+                <p className="text-gray-600 mb-6">
+                  {complaints.length === 0
                     ? "You haven't submitted any complaints yet"
                     : "No complaints match your current filters"
                   }
@@ -531,9 +498,9 @@ const PatientComplaints = () => {
                 {complaints.length === 0 && (
                   <Button
                     variant="primary"
-                    icon={<Plus className="w-4 h-4" />}
                     onClick={() => setShowCreateModal(true)}
                   >
+                    <Plus className="w-4 h-4 mr-2" />
                     Submit Your First Complaint
                   </Button>
                 )}
@@ -543,393 +510,208 @@ const PatientComplaints = () => {
         </Card>
       </div>
 
-      {/* Create Complaint Modal */}
-      <FormModal
-        show={showCreateModal}
-        onClose={() => {
-          setShowCreateModal(false);
-          complaintForm.reset();
-          setAttachments([]);
-        }}
-        title="Submit New Complaint"
-        onSubmit={complaintForm.handleSubmit(handleCreateComplaint)}
-        loading={loading}
-        size="lg"
-      >
-        <div className="space-y-6">
-          {/* Complaint Type */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Complaint Type *
-            </label>
-            <select
-              {...complaintForm.register('type')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-            >
-              <option value="">Select complaint type</option>
-              {complaintTypes.map((type) => (
-                <option key={type.value} value={type.value}>
-                  {type.label}
-                </option>
-              ))}
-            </select>
-            {complaintForm.formState.errors.type && (
-              <p className="text-red-500 text-sm mt-1">
-                {complaintForm.formState.errors.type.message}
-              </p>
-            )}
-          </div>
-
-          {/* Subject */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Subject *
-            </label>
-            <input
-              type="text"
-              {...complaintForm.register('subject')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-              placeholder="Brief summary of your complaint"
-            />
-            {complaintForm.formState.errors.subject && (
-              <p className="text-red-500 text-sm mt-1">
-                {complaintForm.formState.errors.subject.message}
-              </p>
-            )}
-          </div>
-
-          {/* Priority */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Priority *
-            </label>
-            <select
-              {...complaintForm.register('priority')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-            >
-              {priorityLevels.map((priority) => (
-                <option key={priority.value} value={priority.value}>
-                  {priority.label}
-                </option>
-              ))}
-            </select>
-            {complaintForm.formState.errors.priority && (
-              <p className="text-red-500 text-sm mt-1">
-                {complaintForm.formState.errors.priority.message}
-              </p>
-            )}
-          </div>
-
-          {/* Description */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Description *
-            </label>
-            <textarea
-              {...complaintForm.register('description')}
-              rows={6}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-              placeholder="Please provide detailed information about your complaint..."
-            />
-            {complaintForm.formState.errors.description && (
-              <p className="text-red-500 text-sm mt-1">
-                {complaintForm.formState.errors.description.message}
-              </p>
-            )}
-          </div>
-
-          {/* File Attachments */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Attachments
-            </label>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-              <input
-                type="file"
-                multiple
-                onChange={handleFileUpload}
-                className="hidden"
-                id="file-upload"
-                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt"
-              />
-              <label htmlFor="file-upload" className="cursor-pointer">
-                <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                <p className="text-sm text-gray-600">
-                  Click to upload files or drag and drop
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  PDF, DOC, JPG, PNG up to 10MB each
-                </p>
-              </label>
+      {/* Create Complaint Modal - Fixed */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-medium text-gray-900">Submit New Complaint</h3>
+              <button
+                onClick={() => {
+                  setShowCreateModal(false);
+                  complaintForm.reset();
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
             </div>
-
-            {/* Attachment List */}
-            {attachments.length > 0 && (
-              <div className="mt-4 space-y-2">
-                {attachments.map((attachment) => (
-                  <div key={attachment.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <Paperclip className="w-4 h-4 text-gray-500" />
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{attachment.name}</p>
-                        <p className="text-xs text-gray-500">{formatFileSize(attachment.size)}</p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeAttachment(attachment.id)}
-                      className="text-red-500 hover:text-red-700"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </FormModal>
-
-      {/* Complaint Details Modal */}
-      <Modal
-        show={showDetailsModal}
-        onClose={() => setShowDetailsModal(false)}
-        title="Complaint Details"
-        size="lg"
-      >
-        {selectedComplaint && (
-          <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-start justify-between">
+            
+            <form onSubmit={complaintForm.handleSubmit(handleCreateComplaint)} className="space-y-6">
+              {/* Complaint Type */}
               <div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                  {selectedComplaint.subject}
-                </h3>
-                <div className="flex items-center space-x-3">
-                  <Badge
-                    variant={selectedComplaint.status === 'RESOLVED' ? 'success' : 
-                           selectedComplaint.status === 'IN_PROGRESS' ? 'primary' :
-                           selectedComplaint.status === 'OPEN' ? 'warning' : 'secondary'}
-                  >
-                    {selectedComplaint.status.replace('_', ' ')}
-                  </Badge>
-                  <Badge className={getPriorityColor(selectedComplaint.priority)}>
-                    {selectedComplaint.priority} Priority
-                  </Badge>
-                </div>
-              </div>
-              <div className="text-right text-sm text-gray-600">
-                <div>#{selectedComplaint.complaintId}</div>
-                <div>{formatDate(selectedComplaint.createdAt)}</div>
-              </div>
-            </div>
-
-            {/* Details */}
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <h4 className="font-medium text-gray-900 mb-2">Complaint Type</h4>
-                <div className="flex items-center space-x-2">
-                  {getTypeIcon(selectedComplaint.complaintType)}
-                  <span>{complaintTypes.find(t => t.value === selectedComplaint.type)?.label}</span>
-                </div>
-              </div>
-
-              {selectedComplaint.assignedTo && (
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-2">Assigned To</h4>
-                  <div className="flex items-center space-x-2">
-                    <User className="w-4 h-4" />
-                    <span>{selectedComplaint.assignedTo}</span>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Description */}
-            <div>
-              <h4 className="font-medium text-gray-900 mb-2">Description</h4>
-              <p className="text-gray-700 leading-relaxed">
-                {selectedComplaint.description}
-              </p>
-            </div>
-
-            {/* Updates Timeline */}
-            {selectedComplaint.updates && selectedComplaint.updates.length > 0 && (
-              <div>
-                <h4 className="font-medium text-gray-900 mb-4">Updates</h4>
-                <div className="space-y-4">
-                  {selectedComplaint.updates.map((update, index) => (
-                    <div key={index} className="flex space-x-4">
-                      <div className="flex-shrink-0">
-                        <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
-                          <MessageSquare className="w-4 h-4 text-primary-600" />
-                        </div>
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-1">
-                          <span className="font-medium text-gray-900">{update.author}</span>
-                          <span className="text-sm text-gray-500">
-                            {formatDate(update.createdAt)}
-                          </span>
-                        </div>
-                        <p className="text-gray-700">{update.message}</p>
-                      </div>
-                    </div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Complaint Type *
+                </label>
+                <select
+                  {...complaintForm.register('complaintType')}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="">Select complaint type</option>
+                  {complaintTypes.map((type) => (
+                    <option key={type.value} value={type.value}>
+                      {type.label}
+                    </option>
                   ))}
-                </div>
-              </div>
-            )}
-
-            {/* Attachments */}
-            {selectedComplaint.attachments && selectedComplaint.attachments.length > 0 && (
-              <div>
-                <h4 className="font-medium text-gray-900 mb-3">Attachments</h4>
-                <div className="space-y-2">
-                  {selectedComplaint.attachments.map((attachment, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <Paperclip className="w-4 h-4 text-gray-500" />
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">{attachment.name}</p>
-                          <p className="text-xs text-gray-500">{formatFileSize(attachment.size)}</p>
-                        </div>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        icon={<Download className="w-4 h-4" />}
-                        onClick={() => patientService.downloadAttachment(attachment.id, attachment.name)}
-                      >
-                        Download
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Resolution */}
-            {selectedComplaint.status === 'RESOLVED' && selectedComplaint.adminResponse && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <div className="flex items-start space-x-3">
-                  <CheckCircle className="w-5 h-5 text-green-500 mt-0.5" />
-                  <div>
-                    <h4 className="font-medium text-green-900 mb-1">Resolution</h4>
-                    <p className="text-sm text-green-800">{selectedComplaint.adminResponse}</p>
-                    <div className="flex items-center space-x-2 mt-2 text-xs text-green-700">
-                      <Calendar className="w-3 h-3" />
-                      <span>Resolved on {formatDate(selectedComplaint.resolvedAt)}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Contact Information */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h4 className="font-medium text-blue-900 mb-3">Need Additional Help?</h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                <div className="flex items-center space-x-2 text-blue-800">
-                  <Phone className="w-4 h-4" />
-                  <span>Call: +1 (555) 123-4567</span>
-                </div>
-                <div className="flex items-center space-x-2 text-blue-800">
-                  <Mail className="w-4 h-4" />
-                  <span>Email: support@medcare.com</span>
-                </div>
-                <div className="flex items-center space-x-2 text-blue-800">
-                  <MessageSquare className="w-4 h-4" />
-                  <span>Live Chat: Available 24/7</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Feedback Section - Only show for resolved complaints */}
-            {selectedComplaint.status === 'RESOLVED' && !selectedComplaint.feedback && (
-              <div className="border-t border-gray-200 pt-6">
-                <h4 className="font-medium text-gray-900 mb-4">How was our support?</h4>
-                <div className="flex items-center space-x-4">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    icon={<ThumbsUp className="w-4 h-4" />}
-                    onClick={() => {
-                      // Handle positive feedback
-                      alert('Thank you for your feedback!');
-                    }}
-                  >
-                    Helpful
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    icon={<ThumbsDown className="w-4 h-4" />}
-                    onClick={() => {
-                      // Handle negative feedback
-                      alert('We appreciate your feedback. We\'ll work to improve.');
-                    }}
-                  >
-                    Not Helpful
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* Show feedback if already provided */}
-            {selectedComplaint.feedback && (
-              <div className="border-t border-gray-200 pt-6">
-                <h4 className="font-medium text-gray-900 mb-2">Your Feedback</h4>
-                <div className="flex items-center space-x-2">
-                  {selectedComplaint.feedback.rating === 'positive' ? (
-                    <ThumbsUp className="w-4 h-4 text-green-500" />
-                  ) : (
-                    <ThumbsDown className="w-4 h-4 text-red-500" />
-                  )}
-                  <span className="text-sm text-gray-600">
-                    You rated this support as {selectedComplaint.feedback.rating}
-                  </span>
-                </div>
-                {selectedComplaint.feedback.comment && (
-                  <p className="text-sm text-gray-700 mt-2 italic">
-                    "{selectedComplaint.feedback.comment}"
+                </select>
+                {complaintForm.formState.errors.complaintType && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {complaintForm.formState.errors.complaintType.message}
                   </p>
                 )}
               </div>
-            )}
 
-            {/* Action Buttons */}
-            <div className="flex items-center justify-between border-t border-gray-200 pt-6">
-              <div className="flex items-center space-x-3">
-                {selectedComplaint.status !== 'closed' && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    icon={<MessageSquare className="w-4 h-4" />}
-                    onClick={() => {
-                      // Navigate to complaint details page for messaging
-                      navigate(`/patient/complaints/${selectedComplaint.id}`);
-                    }}
-                  >
-                    Add Comment
-                  </Button>
-                )}
-                
-                <Button
-                  size="sm"
-                  variant="outline"
-                  icon={<Download className="w-4 h-4" />}
-                  onClick={() => {
-                    // Download complaint summary
-                    patientService.downloadComplaintSummary(selectedComplaint.id, `complaint-${selectedComplaint.id}.pdf`);
-                  }}
+              {/* Priority */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Priority *
+                </label>
+                <select
+                  {...complaintForm.register('priority')}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                 >
-                  Download Summary
-                </Button>
+                  {priorityLevels.map((priority) => (
+                    <option key={priority.value} value={priority.value}>
+                      {priority.label}
+                    </option>
+                  ))}
+                </select>
+                {complaintForm.formState.errors.priority && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {complaintForm.formState.errors.priority.message}
+                  </p>
+                )}
               </div>
 
-              <div className="flex items-center space-x-2">
+              {/* Related Case */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Related Case (Optional)
+                </label>
+                <select
+                  {...complaintForm.register('caseId')}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="">Select a case (if applicable)</option>
+                  {cases.map((case_) => (
+                    <option key={case_.id} value={case_.id}>
+                      Case #{case_.id} - {case_.diagnosis || 'General'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Related Doctor */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Related Doctor (Optional)
+                </label>
+                <select
+                  {...complaintForm.register('doctorId')}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="">Select a doctor (if applicable)</option>
+                  {doctors.map((doctor) => (
+                    <option key={doctor.id} value={doctor.id}>
+                      Dr. {doctor.firstName} {doctor.lastName} - {doctor.specialization}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Description *
+                </label>
+                <textarea
+                  {...complaintForm.register('description')}
+                  rows={6}
+                  placeholder="Please provide detailed information about your complaint..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                />
+                {complaintForm.formState.errors.description && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {complaintForm.formState.errors.description.message}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-4 border-t">
                 <Button
-                  size="sm"
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setShowCreateModal(false);
+                    complaintForm.reset();
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={loading}>
+                  {loading ? 'Submitting...' : 'Submit Complaint'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Complaint Details Modal */}
+      {showDetailsModal && selectedComplaint && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-medium text-gray-900">Complaint Details</h3>
+              <button
+                onClick={() => setShowDetailsModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="space-y-6">
+              <div className="flex items-center space-x-4">
+                <StatusBadge status={selectedComplaint.status.toLowerCase()}>
+                  {selectedComplaint.status.replace('_', ' ')}
+                </StatusBadge>
+                <Badge className={getPriorityColor(selectedComplaint.priority)}>
+                  {selectedComplaint.priority}
+                </Badge>
+              </div>
+
+              <div>
+                <h4 className="font-medium text-gray-900 mb-2">Type</h4>
+                <p className="text-gray-700">
+                  {complaintTypes.find(t => t.value === selectedComplaint.complaintType)?.label || selectedComplaint.complaintType}
+                </p>
+              </div>
+
+              <div>
+                <h4 className="font-medium text-gray-900 mb-2">Description</h4>
+                <p className="text-gray-700 whitespace-pre-wrap">{selectedComplaint.description}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-2">Submitted</h4>
+                  <p className="text-gray-700">{formatDate(selectedComplaint.createdAt)}</p>
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-2">Last Updated</h4>
+                  <p className="text-gray-700">{formatDate(selectedComplaint.updatedAt)}</p>
+                </div>
+              </div>
+
+              {selectedComplaint.adminResponse && (
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-2">Admin Response</h4>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <p className="text-gray-700 whitespace-pre-wrap">{selectedComplaint.adminResponse}</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end space-x-3 pt-4 border-t">
+                <Button
+                  variant="outline"
+                  onClick={() => navigate(`/app/patient/complaints/${selectedComplaint.id}`)}
+                >
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  View Details
+                </Button>
+                <Button
                   variant="outline"
                   onClick={() => setShowDetailsModal(false)}
                 >
@@ -938,8 +720,8 @@ const PatientComplaints = () => {
               </div>
             </div>
           </div>
-        )}
-      </Modal>
+        </div>
+      )}
     </div>
   );
 };

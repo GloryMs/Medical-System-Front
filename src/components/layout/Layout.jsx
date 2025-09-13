@@ -65,6 +65,7 @@ const Layout = () => {
         open={sidebarOpen} 
         onClose={() => setSidebarOpen(false)}
         userRole={user?.role}
+        userId={user?.id} 
       />
 
       {/* Main content area - Adjusted for fixed sidebar */}
