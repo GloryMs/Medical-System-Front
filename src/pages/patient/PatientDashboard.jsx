@@ -119,13 +119,13 @@ const PatientDashboard = () => {
         </div>
         
         <div className="mt-6 flex flex-col sm:flex-row gap-4">
-          <Link to="/patient/cases">
+          <Link to="/app/patient/cases">
             <Button variant="outline" className="border-white text-white hover:bg-white hover:text-primary-600">
               <Plus className="w-4 h-4 mr-2" />
               Submit New Case
             </Button>
           </Link>
-          <Link to="/patient/appointments">
+          <Link to="/app/patient/appointments">
             <Button variant="ghost" className="text-white hover:bg-primary-400">
               <Calendar className="w-4 h-4 mr-2" />
               View Appointments
@@ -142,7 +142,7 @@ const PatientDashboard = () => {
           message="Your subscription is inactive. Please renew to continue accessing medical consultations."
         >
           <div className="mt-4">
-            <Link to="/patient/subscription">
+            <Link to="/app/patient/subscription">
               <Button variant="warning">
                 Manage Subscription
               </Button>
@@ -191,7 +191,7 @@ const PatientDashboard = () => {
         <Card 
           title="Recent Cases" 
           action={
-            <Link to="/patient/cases">
+            <Link to="/app/patient/cases">
               <Button variant="ghost" size="sm">View All</Button>
             </Link>
           }
@@ -220,7 +220,7 @@ const PatientDashboard = () => {
                   </div>
                   <div className="flex items-center space-x-3">
                     <StatusBadge status={case_.status} size="sm" />
-                    <Link to={`/patient/cases/${case_.id}`}>
+                    <Link to={`/app/patient/cases/${case_.id}`}>
                       <Button variant="ghost" size="sm" icon={<Eye className="w-4 h-4" />}>
                         View
                       </Button>
@@ -232,7 +232,7 @@ const PatientDashboard = () => {
               <div className="text-center py-8">
                 <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-600 mb-4">No cases submitted yet</p>
-                <Link to="/patient/cases">
+                <Link to="/app/patient/cases">
                   <Button icon={<Plus className="w-4 h-4" />}>
                     Submit Your First Case
                   </Button>
@@ -246,7 +246,7 @@ const PatientDashboard = () => {
         <Card 
           title="Upcoming Appointments" 
           action={
-            <Link to="/patient/appointments">
+            <Link to="/app/patient/appointments">
               <Button variant="ghost" size="sm">View All</Button>
             </Link>
           }
@@ -309,7 +309,7 @@ const PatientDashboard = () => {
         <Card 
           title="Recent Notifications" 
           action={
-            <Link to="/patient/notifications">
+            <Link to="/app/patient/notifications">
               <Button variant="ghost" size="sm">View All</Button>
             </Link>
           }
@@ -340,7 +340,7 @@ const PatientDashboard = () => {
         {/* Quick Actions */}
         <Card title="Quick Actions">
           <div className="space-y-3">
-            <Link to="/patient/cases" className="block">
+            <Link to="/app/patient/cases" className="block">
               <div className="flex items-center p-3 rounded-lg hover:bg-gray-50 transition-colors">
                 <div className="p-2 bg-primary-100 rounded-lg mr-3">
                   <Plus className="w-4 h-4 text-primary-600" />
@@ -352,7 +352,7 @@ const PatientDashboard = () => {
               </div>
             </Link>
 
-            <Link to="/patient/profile" className="block">
+            <Link to="/app/patient/profile" className="block">
               <div className="flex items-center p-3 rounded-lg hover:bg-gray-50 transition-colors">
                 <div className="p-2 bg-blue-100 rounded-lg mr-3">
                   <FileText className="w-4 h-4 text-blue-600" />
@@ -364,7 +364,7 @@ const PatientDashboard = () => {
               </div>
             </Link>
 
-            <Link to="/patient/payments" className="block">
+            <Link to="/app/patient/payments" className="block">
               <div className="flex items-center p-3 rounded-lg hover:bg-gray-50 transition-colors">
                 <div className="p-2 bg-green-100 rounded-lg mr-3">
                   <DollarSign className="w-4 h-4 text-green-600" />
@@ -376,7 +376,7 @@ const PatientDashboard = () => {
               </div>
             </Link>
 
-            <Link to="/patient/complaints" className="block">
+            <Link to="/app/patient/complaints" className="block">
               <div className="flex items-center p-3 rounded-lg hover:bg-gray-50 transition-colors">
                 <div className="p-2 bg-orange-100 rounded-lg mr-3">
                   <AlertTriangle className="w-4 h-4 text-orange-600" />
@@ -412,7 +412,7 @@ const PatientDashboard = () => {
               </div>
 
               <div className="pt-3 border-t border-gray-200">
-                <Link to="/patient/subscription" className="block">
+                <Link to="/app/patient/subscription" className="block">
                   <Button variant="outline" size="sm" fullWidth>
                     Manage Subscription
                   </Button>
@@ -422,7 +422,7 @@ const PatientDashboard = () => {
           ) : (
             <div className="text-center py-6">
               <p className="text-gray-600 text-sm mb-4">No active subscription</p>
-              <Link to="/patient/subscription">
+              <Link to="/app/patient/subscription">
                 <Button size="sm">Choose Plan</Button>
               </Link>
             </div>

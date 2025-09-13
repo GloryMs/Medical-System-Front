@@ -1,239 +1,239 @@
 import { api } from './apiClient';
 
 const commonService = {
-  // ====== MEDICAL CONFIGURATIONS ======
+  // ====== MEDICAL configuration ======
 
-  // Get all medical configurations by type (generic endpoint)
+  // Get all medical configuration by type (generic endpoint)
   getMedicalConfigurations: async (configType) => {
-    return await api.get(`/common-library/api/configurations/${configType}`);
+    return await api.get(`/config-service/api/configuration/${configType}`);
   },
 
   // Get configuration with filters
   getMedicalConfigurationsWithFilters: async (configType, filters = {}) => {
     const params = new URLSearchParams(filters);
-    return await api.get(`/common-library/api/configurations/${configType}?${params}`);
+    return await api.get(`/config-service/api/configuration/${configType}?${params}`);
   },
 
   // ====== DISEASES ======
 
   // Get all active diseases
   getAllDiseases: async () => {
-    return await api.get('/common-library/api/configurations/diseases');
+    return await api.get('/config-service/api/configuration/diseases');
   },
 
   // Get diseases by category
   getDiseasesByCategory: async (category) => {
-    return await api.get(`/common-library/api/configurations/diseases/category/${category}`);
+    return await api.get(`/config-service/api/configuration/diseases/${category}/active`);
   },
 
   // Get disease by ICD code
   getDiseaseByCode: async (icdCode) => {
-    return await api.get(`/common-library/api/configurations/diseases/code/${icdCode}`);
+    return await api.get(`/config-service/api/configuration/diseases/code/${icdCode}`);
   },
 
   // Search diseases
   searchDiseases: async (query) => {
-    return await api.get(`/common-library/api/configurations/diseases/search?q=${encodeURIComponent(query)}`);
+    return await api.get(`/config-service/api/configuration/diseases/search?q=${encodeURIComponent(query)}`);
   },
 
   // Get specializations for a disease
   getSpecializationsForDisease: async (diseaseCode) => {
-    return await api.get(`/common-library/api/configurations/diseases/${diseaseCode}/specializations`);
+    return await api.get(`/config-service/api/configuration/diseases/${diseaseCode}/specializations`);
   },
 
   // ====== SYMPTOMS ======
 
   // Get all active symptoms
   getAllSymptoms: async () => {
-    return await api.get('/common-library/api/configurations/symptoms');
+    return await api.get('/config-service/api/configuration/symptoms');
   },
 
   // Get symptoms by body system
   getSymptomsByBodySystem: async (bodySystem) => {
-    return await api.get(`/common-library/api/configurations/symptoms/system/${bodySystem}`);
+    return await api.get(`/config-service/api/configuration/symptoms/system/${bodySystem}`);
   },
 
   // Search symptoms
   searchSymptoms: async (query) => {
-    return await api.get(`/common-library/api/configurations/symptoms/search?q=${encodeURIComponent(query)}`);
+    return await api.get(`/config-service/api/configuration/symptoms/search?q=${encodeURIComponent(query)}`);
   },
 
   // Get related diseases for symptoms
   getRelatedDiseasesForSymptoms: async (symptomCodes) => {
     const params = symptomCodes.map(code => `symptoms=${code}`).join('&');
-    return await api.get(`/common-library/api/configurations/symptoms/related-diseases?${params}`);
+    return await api.get(`/config-service/api/configuration/symptoms/related-diseases?${params}`);
   },
 
   // Get symptoms by disease
   getSymptomsByDisease: async (diseaseCode) => {
-    return await api.get(`/common-library/api/configurations/diseases/${diseaseCode}/symptoms`);
+    return await api.get(`/config-service/api/configuration/diseases/${diseaseCode}/symptoms`);
   },
 
   // ====== MEDICATIONS ======
 
   // Get all active medications
   getAllMedications: async () => {
-    return await api.get('/common-library/api/configurations/medications');
+    return await api.get('/config-service/api/configuration/medications');
   },
 
   // Get medications by category
   getMedicationsByCategory: async (category) => {
-    return await api.get(`/common-library/api/configurations/medications/category/${category}`);
+    return await api.get(`/config-service/api/configuration/medications/category/${category}`);
   },
 
   // Get medication by ATC code
   getMedicationByCode: async (atcCode) => {
-    return await api.get(`/common-library/api/configurations/medications/code/${atcCode}`);
+    return await api.get(`/config-service/api/configuration/medications/code/${atcCode}`);
   },
 
   // Search medications
   searchMedications: async (query) => {
-    return await api.get(`/common-library/api/configurations/medications/search?q=${encodeURIComponent(query)}`);
+    return await api.get(`/config-service/api/configuration/medications/search?q=${encodeURIComponent(query)}`);
   },
 
   // Get medication interactions
   getMedicationInteractions: async (medicationCodes) => {
     const params = medicationCodes.map(code => `medications=${code}`).join('&');
-    return await api.get(`/common-library/api/configurations/medications/interactions?${params}`);
+    return await api.get(`/config-service/api/configuration/medications/interactions?${params}`);
   },
 
   // Get medications for disease
   getMedicationsForDisease: async (diseaseCode) => {
-    return await api.get(`/common-library/api/configurations/diseases/${diseaseCode}/medications`);
+    return await api.get(`/config-service/api/configuration/diseases/${diseaseCode}/medications`);
   },
 
   // ====== SPECIALIZATIONS ======
 
   // Get all specializations
   getAllSpecializations: async () => {
-    return await api.get('/common-library/api/configurations/specializations');
+    return await api.get('/config-service/api/configuration/specializations');
   },
 
   // Get subspecializations for a specialization
   getSubspecializations: async (specializationCode) => {
-    return await api.get(`/common-library/api/configurations/specializations/${specializationCode}/subspecializations`);
+    return await api.get(`/config-service/api/configuration/specializations/${specializationCode}/subspecializations`);
   },
 
   // Get specializations by level (primary/secondary)
   getSpecializationsByLevel: async (level) => {
-    return await api.get(`/common-library/api/configurations/specializations/level/${level}`);
+    return await api.get(`/config-service/api/configuration/specializations/level/${level}`);
   },
 
   // Search specializations
   searchSpecializations: async (query) => {
-    return await api.get(`/common-library/api/configurations/specializations/search?q=${encodeURIComponent(query)}`);
+    return await api.get(`/config-service/api/configuration/specializations/search?q=${encodeURIComponent(query)}`);
   },
 
   // ====== CASE TYPES ======
 
   // Get all case types
   getAllCaseTypes: async () => {
-    return await api.get('/common-library/api/configurations/case-types');
+    return await api.get('/config-service/api/configuration/case-types');
   },
 
   // ====== COUNTRIES AND REGIONS ======
 
   // Get all countries
   getAllCountries: async () => {
-    return await api.get('/common-library/api/configurations/countries');
+    return await api.get('/config-service/api/configuration/countries');
   },
 
   // Get states/provinces by country
   getStatesByCountry: async (countryCode) => {
-    return await api.get(`/common-library/api/configurations/countries/${countryCode}/states`);
+    return await api.get(`/config-service/api/configuration/countries/${countryCode}/states`);
   },
 
   // ====== LANGUAGES ======
 
   // Get all supported languages
   getAllLanguages: async () => {
-    return await api.get('/common-library/api/configurations/languages');
+    return await api.get('/config-service/api/configuration/languages');
   },
 
   // ====== URGENCY LEVELS ======
 
   // Get all urgency levels
   getUrgencyLevels: async () => {
-    return await api.get('/common-library/api/configurations/urgency-levels');
+    return await api.get('/config-service/api/configuration/urgency-levels');
   },
 
   // ====== COMPLEXITY LEVELS ======
 
   // Get all complexity levels
   getComplexityLevels: async () => {
-    return await api.get('/common-library/api/configurations/complexity-levels');
+    return await api.get('/config-service/api/configuration/complexity-levels');
   },
 
   // ====== SEARCH AND SUGGESTIONS ======
 
-  // Universal search across all medical configurations
+  // Universal search across all medical configuration
   globalSearch: async (query, types = []) => {
     const params = new URLSearchParams({ q: query });
     if (types.length > 0) {
       types.forEach(type => params.append('types', type));
     }
-    return await api.get(`/common-library/api/configurations/search?${params}`);
+    return await api.get(`/config-service/api/configuration/search?${params}`);
   },
 
   // Get suggestions based on input
   getSuggestions: async (configType, query, limit = 10) => {
-    return await api.get(`/common-library/api/configurations/${configType}/suggestions?q=${encodeURIComponent(query)}&limit=${limit}`);
+    return await api.get(`/config-service/api/configuration/${configType}/suggestions?q=${encodeURIComponent(query)}&limit=${limit}`);
   },
 
   // Get autocomplete suggestions
   getAutocomplete: async (configType, query, limit = 5) => {
-    return await api.get(`/common-library/api/configurations/${configType}/autocomplete?q=${encodeURIComponent(query)}&limit=${limit}`);
+    return await api.get(`/config-service/api/configuration/${configType}/autocomplete?q=${encodeURIComponent(query)}&limit=${limit}`);
   },
 
   // ====== VALIDATION AND VERIFICATION ======
 
   // Validate medical codes
   validateMedicalCode: async (configType, code) => {
-    return await api.get(`/common-library/api/configurations/${configType}/validate/${code}`);
+    return await api.get(`/config-service/api/configuration/${configType}/validate/${code}`);
   },
 
   // Verify multiple codes at once
   validateMultipleCodes: async (configType, codes) => {
-    return await api.post(`/common-library/api/configurations/${configType}/validate`, { codes });
+    return await api.post(`/config-service/api/configuration/${configType}/validate`, { codes });
   },
 
   // Check if code exists
   checkCodeExists: async (configType, code) => {
-    return await api.get(`/common-library/api/configurations/${configType}/exists/${code}`);
+    return await api.get(`/config-service/api/configuration/${configType}/exists/${code}`);
   },
 
   // ====== HIERARCHICAL DATA ======
 
-  // Get parent configurations
+  // Get parent configuration
   getParentConfigurations: async (configType, parentCode) => {
-    return await api.get(`/common-library/api/configurations/${configType}/parent/${parentCode}`);
+    return await api.get(`/config-service/api/configuration/${configType}/parent/${parentCode}`);
   },
 
-  // Get child configurations
+  // Get child configuration
   getChildConfigurations: async (configType, parentCode) => {
-    return await api.get(`/common-library/api/configurations/${configType}/children/${parentCode}`);
+    return await api.get(`/config-service/api/configuration/${configType}/children/${parentCode}`);
   },
 
   // Get configuration hierarchy
   getConfigurationHierarchy: async (configType) => {
-    return await api.get(`/common-library/api/configurations/${configType}/hierarchy`);
+    return await api.get(`/config-service/api/configuration/${configType}/hierarchy`);
   },
 
   // ====== RELATIONSHIPS ======
 
-  // Get related configurations
+  // Get related configuration
   getRelatedConfigurations: async (configType, code, relationType) => {
-    return await api.get(`/common-library/api/configurations/${configType}/${code}/related/${relationType}`);
+    return await api.get(`/config-service/api/configuration/${configType}/${code}/related/${relationType}`);
   },
 
   // Get disease-symptom relationships
   getDiseaseSymptomRelationships: async (diseaseCode) => {
-    return await api.get(`/common-library/api/configurations/relationships/disease-symptoms/${diseaseCode}`);
+    return await api.get(`/config-service/api/configuration/relationships/disease-symptoms/${diseaseCode}`);
   },
 
   // Get disease-specialization relationships
   getDiseaseSpecializationRelationships: async (diseaseCode) => {
-    return await api.get(`/common-library/api/configurations/relationships/disease-specializations/${diseaseCode}`);
+    return await api.get(`/config-service/api/configuration/relationships/disease-specializations/${diseaseCode}`);
   },
 
   // ====== COMPATIBILITY AND MATCHING ======
@@ -241,91 +241,91 @@ const commonService = {
   // Find compatible specializations for symptoms
   findCompatibleSpecializations: async (symptomCodes) => {
     const params = symptomCodes.map(code => `symptoms=${code}`).join('&');
-    return await api.get(`/common-library/api/configurations/match/specializations?${params}`);
+    return await api.get(`/config-service/api/configuration/match/specializations?${params}`);
   },
 
   // Get recommended specializations for a case
   getRecommendedSpecializations: async (caseData) => {
-    return await api.post('/common-library/api/configurations/match/recommend-specializations', caseData);
+    return await api.post('/config-service/api/configuration/match/recommend-specializations', caseData);
   },
 
   // Find doctors by medical criteria
   findDoctorsByMedicalCriteria: async (criteria) => {
-    return await api.post('/common-library/api/configurations/match/doctors', criteria);
+    return await api.post('/config-service/api/configuration/match/doctors', criteria);
   },
 
   // ====== BULK OPERATIONS ======
 
-  // Get multiple configurations by type and codes
+  // Get multiple configuration by type and codes
   getMultipleConfigurations: async (requests) => {
-    return await api.post('/common-library/api/configurations/bulk/get', { requests });
+    return await api.post('/config-service/api/configuration/bulk/get', { requests });
   },
 
-  // Batch validate configurations
+  // Batch validate configuration
   batchValidateConfigurations: async (validations) => {
-    return await api.post('/common-library/api/configurations/bulk/validate', { validations });
+    return await api.post('/config-service/api/configuration/bulk/validate', { validations });
   },
 
   // ====== CACHING AND METADATA ======
 
   // Get configuration metadata
   getConfigurationMetadata: async (configType) => {
-    return await api.get(`/common-library/api/configurations/${configType}/metadata`);
+    return await api.get(`/config-service/api/configuration/${configType}/metadata`);
   },
 
   // Get last updated timestamp
   getLastUpdated: async (configType) => {
-    return await api.get(`/common-library/api/configurations/${configType}/last-updated`);
+    return await api.get(`/config-service/api/configuration/${configType}/last-updated`);
   },
 
   // Refresh configuration cache
   refreshCache: async (configType) => {
-    return await api.post(`/common-library/api/configurations/${configType}/refresh-cache`);
+    return await api.post(`/config-service/api/configuration/${configType}/refresh-cache`);
   },
 
   // Get configuration statistics
   getConfigurationStats: async () => {
-    return await api.get('/common-library/api/configurations/stats');
+    return await api.get('/config-service/api/configuration/stats');
   },
 
   // ====== ADMINISTRATION (for admins) ======
 
   // Create new configuration
   createConfiguration: async (configType, configData) => {
-    return await api.post(`/common-library/api/configurations/${configType}`, configData);
+    return await api.post(`/config-service/api/configuration/${configType}`, configData);
   },
 
   // Update configuration
   updateConfiguration: async (configType, configId, configData) => {
-    return await api.put(`/common-library/api/configurations/${configType}/${configId}`, configData);
+    return await api.put(`/config-service/api/configuration/${configType}/${configId}`, configData);
   },
 
   // Delete configuration
   deleteConfiguration: async (configType, configId) => {
-    return await api.delete(`/common-library/api/configurations/${configType}/${configId}`);
+    return await api.delete(`/config-service/api/configuration/${configType}/${configId}`);
   },
 
   // Toggle configuration active status
   toggleConfigurationStatus: async (configType, configId) => {
-    return await api.post(`/common-library/api/configurations/${configType}/${configId}/toggle-status`);
+    return await api.post(`/config-service/api/configuration/${configType}/${configId}/toggle-status`);
   },
 
-  // Bulk update configurations
+  // Bulk update configuration
   bulkUpdateConfigurations: async (configType, updates) => {
-    return await api.post(`/common-library/api/configurations/${configType}/bulk-update`, { updates });
+    return await api.post(`/config-service/api/configuration/${configType}/bulk-update`, { updates });
   },
 
-  // Import configurations from file
+  // Import configuration from file
   importConfigurations: async (configType, file) => {
     const formData = new FormData();
     formData.append('file', file);
-    return await api.upload(`/common-library/api/configurations/${configType}/import`, formData);
+    return await api.upload(`/config-service/api/configuration/${configType}/import`, formData);
   },
 
-  // Export configurations
+  // Export configuration
   exportConfigurations: async (configType, format = 'json', filters = {}) => {
     const params = new URLSearchParams({ format, ...filters });
-    return await api.download(`/common-library/api/configurations/${configType}/export?${params}`, `${configType}_export.${format}`);
+    return await api.download(`/config-service/api/configuration/${configType}/export?${params}`, `${configType}_export.${format}`);
   },
 
   // ====== FALLBACK METHODS FOR BACKWARD COMPATIBILITY ======

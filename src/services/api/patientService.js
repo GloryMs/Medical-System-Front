@@ -19,7 +19,7 @@ const patientService = {
   // Case Management
   getCases: async (filters = {}) => {
     const params = new URLSearchParams(filters);
-    return await api.get(`/patient-service/api/patients/cases?${params}`);
+    return await api.get(`/patient-service/api/patients/cases`);//?${params}
   },
 
   getCaseById: async (caseId) => {
@@ -183,8 +183,13 @@ const patientService = {
 
   // Notifications
   getNotifications: async (filters = {}) => {
+    // const params = new URLSearchParams(filters);
+    // return await api.get(`/patient-service/api/patients/notifications?${params}`);
+
+    /*TODO 
+     your have to update all statci PatientIds*/
     const params = new URLSearchParams(filters);
-    return await api.get(`/patient-service/api/patients/notifications?${params}`);
+    return await api.get(`/patient-service/api/patients/notifications/2`);
   },
 
   markNotificationAsRead: async (notificationId) => {
@@ -223,7 +228,7 @@ const patientService = {
 
   // Dashboard Data
   getDashboardData: async () => {
-    return await api.get('/patient-service/api/patients/1/dashboard');
+    return await api.get('/patient-service/api/patients/2/dashboard');
   },
 
   getDashboardStats: async () => {
