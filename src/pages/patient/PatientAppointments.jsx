@@ -524,10 +524,16 @@ const PatientAppointments = () => {
                             </div>
                           </div>
 
-                          {/* Case Information */}
+
+                          {/* Case Information - Updated with Case Rate */}
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                            {/* Case Rate and Case ID */}
                             <div className="flex items-center space-x-2">
-                              <FileText className="w-4 h-4 text-blue-500" />
+                              <DollarSign className="w-4 h-4 text-red-500" />
+                              <span className="text-sm font-bold text-red-600 bg-red-50 px-2 py-1 rounded">
+                                ${appointment.doctor?.caseRate || 'N/A'}
+                              </span>
+                              <FileText className="w-4 h-4 text-blue-500 ml-2" />
                               <span className="text-sm text-gray-600">
                                 Case #{appointment.caseId}
                               </span>
@@ -550,16 +556,47 @@ const PatientAppointments = () => {
                             )}
                           </div>
 
-                          {/* Additional Details (Expandable) */}
+                          {/* Additional Details (Expandable) - Updated Doctor Information */}
                           {expandedCard === appointment.id && (
                             <div className="mt-4 pt-4 border-t border-gray-200">
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
                                   <h4 className="font-medium text-gray-900 mb-2">Doctor Information</h4>
                                   <div className="space-y-1 text-sm text-gray-600">
-                                    <p>Specialization: {appointment.doctor?.specialization}</p>
-                                    <p>Experience: {appointment.doctor?.experience} years</p>
-                                    <p>Hospital: {appointment.doctor?.hospital}</p>
+                                    <p>
+                                      <span className="font-medium">Specialization:</span> {
+                                        appointment.doctor?.primarySpecialization || 
+                                        appointment.doctor?.specialization || 
+                                        'N/A'
+                                      }
+                                    </p>
+                                    <p>
+                                      <span className="font-medium">Experience:</span> {
+                                        appointment.doctor?.yearsOfExperience || 
+                                        appointment.doctor?.experience || 
+                                        'N/A'
+                                      } years
+                                    </p>
+                                    {appointment.doctor?.languages && appointment.doctor.languages.length > 0 && (
+                                      <p>
+                                        <span className="font-medium">Languages:</span> {
+                                          Array.isArray(appointment.doctor.languages) 
+                                            ? appointment.doctor.languages.map(lang => {
+                                                // Convert language codes to readable names
+                                                const languageNames = {
+                                                  'EN': 'English',
+                                                  'ES': 'Spanish', 
+                                                  'FR': 'French',
+                                                  'DE': 'German',
+                                                  'AR': 'Arabic',
+                                                  'ZH': 'Chinese'
+                                                };
+                                                return languageNames[lang] || lang;
+                                              }).join(', ')
+                                            : appointment.doctor.languages
+                                        }
+                                      </p>
+                                    )}
                                   </div>
                                 </div>
                                 
