@@ -70,11 +70,11 @@ const patientService = {
   // Appointments
   getAppointments: async (filters = {}) => {
     const params = new URLSearchParams(filters);
-    return await api.get(`/patient-service/api/patients/appointments?${params}`);
+    return await api.get(`/patient-service/api/patients/cases/appointments`);//?${params}
   },
 
   getAppointmentById: async (appointmentId) => {
-    return await api.get(`/patient-service/api/patients/appointments/${appointmentId}`);
+    return await api.get(`/patient-service/api/patients/cases/appointments/${appointmentId}`);
   },
 
   acceptAppointment: async (caseId) => {

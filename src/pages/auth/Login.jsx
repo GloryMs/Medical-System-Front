@@ -54,16 +54,16 @@ const Login = () => {
     
     switch(role) {
       case 'PATIENT':
-        dashboardRoute = '/patient/dashboard';
+        dashboardRoute = '/app/patient/dashboard';
         break;
       case 'DOCTOR':
-        dashboardRoute = '/doctor/dashboard';
+        dashboardRoute = '/app/doctor/dashboard';
         break;
       case 'ADMIN':
-        dashboardRoute = '/admin/dashboard';
+        dashboardRoute = '/app/admin/dashboard';
         break;
       default:
-        dashboardRoute = '/';
+        dashboardRoute = '/app';
     }
     
     console.log('Navigating to:', dashboardRoute);

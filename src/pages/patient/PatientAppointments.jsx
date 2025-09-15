@@ -398,7 +398,7 @@ const PatientAppointments = () => {
                       {getConsultationTypeIcon(appointment.consultationType)}
                     </div>
                     <div>
-                      <p className="font-medium text-gray-900">Dr. {appointment.doctor?.name}</p>
+                      <p className="font-medium text-gray-900">Doctor: {appointment.doctor?.fullName}</p>
                       <p className="text-sm text-gray-600">{formatDateTime(appointment.scheduledTime)}</p>
                     </div>
                   </div>
@@ -503,7 +503,7 @@ const PatientAppointments = () => {
                             <div className="flex-1">
                               <div className="flex items-center space-x-2 mb-1">
                                 <h3 className="text-lg font-semibold text-gray-900">
-                                  Dr. {appointment.doctor?.name}
+                                  Doctor: {appointment.doctor?.fullName}
                                 </h3>
                                 <StatusBadge status={appointment.status} />
                               </div>
@@ -655,7 +655,7 @@ const PatientAppointments = () => {
                               </Button>
                             )}
 
-                            <Link to={`/patient/cases/${appointment.caseId}`}>
+                            <Link to={`/app/patient/cases/${appointment.caseId}`}>
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -842,7 +842,7 @@ const PatientAppointments = () => {
               <div>
                 <h4 className="font-medium text-blue-900">Payment Details</h4>
                 <p className="text-sm text-blue-800">
-                  Dr. {selectedAppointment?.doctor?.name} - {formatDateTime(selectedAppointment?.scheduledTime)}
+                  Doctor: {selectedAppointment?.doctor?.fullName} - {formatDateTime(selectedAppointment?.scheduledTime)}
                 </p>
                 <p className="text-lg font-bold text-blue-900 mt-1">
                   ${selectedAppointment?.consultationFee}

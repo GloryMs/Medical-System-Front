@@ -77,7 +77,11 @@ apiClient.interceptors.response.use(
 export const handleApiResponse = (response) => {
   if (response.data.success) {
     return response.data.data;
-  } else {
+  }
+  else if (response.data) {
+    return response.data;
+  }
+   else {
     throw new Error(response.data.message || 'An error occurred');
   }
 };
