@@ -14,14 +14,12 @@ import {
   CreditCard,
   Check,
   X,
-  AlertTriangle,
+  AlertTriangle, // <- This is the correct icon name
   RefreshCw,
   Filter,
   Search,
   ChevronDown,
   ChevronUp,
-  ChevronLeft,
-  ChevronRight,
   Star,
   Download,
   Edit,
@@ -35,10 +33,9 @@ import {
   PlayCircle,
   Pause,
   Calendar as CalendarIcon,
-  Eye,
-  List,
-  Grid
+  Eye
 } from 'lucide-react';
+
 
 import Card, { StatsCard, AlertCard } from '../../components/common/Card';
 import Button from '../../components/common/Button';
@@ -75,10 +72,6 @@ const PatientAppointments = () => {
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
   const [upcomingAppointments, setUpcomingAppointments] = useState([]);
-  
-  // NEW: View mode state
-  const [viewMode, setViewMode] = useState('list'); // 'list' or 'calendar'
-  const [currentDate, setCurrentDate] = useState(new Date());
   
   // Form setup
   const rescheduleForm = useForm({
@@ -133,58 +126,153 @@ const PatientAppointments = () => {
     // Search filter
     if (searchTerm) {
       filtered = filtered.filter(appointment =>
-        appointment.doctor?.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        appointment.caseId?.toString().includes(searchTerm) ||
-        appointment.status?.toLowerCase().includes(searchTerm.toLowerCase())
+        appointment.doctor?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        appointment.caseTitle?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        appointment.id?.toString().includes(searchTerm)
       );
     }
 
     // Status filter
     if (statusFilter !== 'all') {
       filtered = filtered.filter(appointment => 
-        appointment.status?.toLowerCase() === statusFilter
+        appointment.status?.toLowerCase() === statusFilter.toLowerCase()
       );
     }
 
     // Date range filter
     if (dateRange !== 'all') {
       const now = new Date();
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      
       filtered = filtered.filter(appointment => {
         const appointmentDate = new Date(appointment.scheduledTime);
-        const appointmentDateOnly = new Date(appointmentDate.getFullYear(), appointmentDate.getMonth(), appointmentDate.getDate());
-        
         switch (dateRange) {
           case 'today':
-            return appointmentDateOnly.getTime() === today.getTime();
+            return appointmentDate.toDateString() === now.toDateString();
           case 'tomorrow':
-            const tomorrow = new Date(today);
+            const tomorrow = new Date(now);
             tomorrow.setDate(tomorrow.getDate() + 1);
-            return appointmentDateOnly.getTime() === tomorrow.getTime();
+            return appointmentDate.toDateString() === tomorrow.toDateString();
           case 'week':
-            const weekFromNow = new Date(today);
+            const weekFromNow = new Date(now);
             weekFromNow.setDate(weekFromNow.getDate() + 7);
-            return appointmentDateOnly >= today && appointmentDateOnly <= weekFromNow;
+            return appointmentDate >= now && appointmentDate <= weekFromNow;
           case 'month':
-            const monthFromNow = new Date(today);
-            monthFromNow.setDate(monthFromNow.getDate() + 30);
-            return appointmentDateOnly >= today && appointmentDateOnly <= monthFromNow;
+            const monthFromNow = new Date(now);
+            monthFromNow.setMonth(monthFromNow.getMonth() + 1);
+            return appointmentDate >= now && appointmentDate <= monthFromNow;
           case 'past':
-            return appointmentDateOnly < today;
+            return appointmentDate < now;
           default:
             return true;
         }
       });
     }
 
-    // Sort by scheduled time
-    filtered.sort((a, b) => new Date(b.scheduledTime) - new Date(a.scheduledTime));
-    
+    // Sort by date (upcoming first, then past in reverse order)
+    filtered.sort((a, b) => {
+      const dateA = new Date(a.scheduledTime);
+      const dateB = new Date(b.scheduledTime);
+      const now = new Date();
+
+      if (dateA >= now && dateB >= now) {
+        return dateA - dateB; // Upcoming: earliest first
+      } else if (dateA < now && dateB < now) {
+        return dateB - dateA; // Past: latest first
+      } else {
+        return dateA >= now ? -1 : 1; // Upcoming before past
+      }
+    });
+
     setFilteredAppointments(filtered);
   };
 
-  // Utility functions
+  const handleAcceptAppointment = async (appointment) => {
+    // Instead of directly accepting, show payment modal first
+    setSelectedAppointment(appointment);
+    setShowPaymentModal(true);
+  };
+
+      // New function to handle payment and then accept appointment
+  const handlePaymentAndAccept = async () => {
+    if (!selectedAppointment || !selectedPaymentMethod) return;
+  
+    try {
+      // First process the payment with correct ProcessPaymentDto structure
+      await execute(() => patientService.payConsultationFee(
+        selectedAppointment.caseId,
+        {
+          patientId: user.id, // Current logged-in patient ID
+          doctorId: selectedAppointment.doctor?.id || selectedAppointment.doctor.userId, // Doctor's ID
+          caseId: selectedAppointment.caseId,
+          paymentType: 'CONSULTATION', // PaymentType enum value
+          amount: selectedAppointment.doctor?.caseRate || selectedAppointment.consultationFee,
+          paymentMethod: selectedPaymentMethod // This should be the payment method code (e.g., 'CREDIT_CARD', 'PAYPAL', etc.)
+        }
+      ));
+    
+      // Reload appointments to reflect changes
+      await loadAppointments();
+    
+      // Close modal and reset state
+      setShowPaymentModal(false);
+      setSelectedAppointment(null);
+      setSelectedPaymentMethod('');
+    
+      // Show success message
+      alert('Payment processed successfully! Appointment confirmed.');
+    } catch (error) {
+      console.error('Failed to process payment and accept appointment:', error);
+      // Show error message
+      alert('Payment failed. Please try again.');
+    }
+  };
+
+  const handleDeclineAppointment = async (reason) => {
+    if (!selectedAppointment) return;
+    
+    try {
+      await execute(() => patientService.declineAppointment(selectedAppointment.id, reason));
+      await loadAppointments();
+      setShowDeclineModal(false);
+      setSelectedAppointment(null);
+    } catch (error) {
+      console.error('Failed to decline appointment:', error);
+    }
+  };
+
+  const handleRescheduleRequest = async (data) => {
+    if (!selectedAppointment) return;
+    
+    try {
+      await execute(() => patientService.requestReschedule(selectedAppointment.caseId, {
+        ...data,
+        appointmentId: selectedAppointment.id
+      }));
+      await loadAppointments();
+      setShowRescheduleModal(false);
+      setSelectedAppointment(null);
+      rescheduleForm.reset();
+    } catch (error) {
+      console.error('Failed to request reschedule:', error);
+    }
+  };
+
+  const handlePayment = async () => {
+    if (!selectedAppointment || !selectedPaymentMethod) return;
+    
+    try {
+      await execute(() => patientService.payConsultationFee(selectedAppointment.caseId, {
+        paymentMethodId: selectedPaymentMethod,
+        amount: selectedAppointment.consultationFee
+      }));
+      await loadAppointments();
+      setShowPaymentModal(false);
+      setSelectedAppointment(null);
+      setSelectedPaymentMethod('');
+    } catch (error) {
+      console.error('Failed to process payment:', error);
+    }
+  };
+
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       weekday: 'long',
@@ -208,6 +296,20 @@ const PatientAppointments = () => {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  const getStatusColor = (status) => {
+    const colors = {
+      scheduled: 'bg-blue-100 text-blue-800',
+      confirmed: 'bg-green-100 text-green-800',
+      payment_pending: 'bg-yellow-100 text-yellow-800',
+      in_progress: 'bg-indigo-100 text-indigo-800',
+      completed: 'bg-gray-100 text-gray-800',
+      cancelled: 'bg-red-100 text-red-800',
+      rescheduled: 'bg-purple-100 text-purple-800',
+      no_show: 'bg-orange-100 text-orange-800'
+    };
+    return colors[status?.toLowerCase()] || colors.scheduled;
   };
 
   const getConsultationTypeIcon = (type) => {
@@ -245,240 +347,7 @@ const PatientAppointments = () => {
     return { total, upcoming, completed, cancelled };
   };
 
-  // Calendar utility functions
-  const getWeekDates = (date) => {
-    const week = [];
-    const startDate = new Date(date);
-    const day = startDate.getDay();
-    
-    startDate.setDate(startDate.getDate() - day);
-    
-    for (let i = 0; i < 7; i++) {
-      const currentDate = new Date(startDate);
-      currentDate.setDate(startDate.getDate() + i);
-      week.push(currentDate);
-    }
-    
-    return week;
-  };
-
-  const getAppointmentsForDate = (date) => {
-    const dateStr = date.toDateString();
-    return filteredAppointments.filter(appointment => 
-      new Date(appointment.scheduledTime).toDateString() === dateStr
-    );
-  };
-
-  const navigateWeek = (direction) => {
-    setCurrentDate(prev => {
-      const newDate = new Date(prev);
-      newDate.setDate(prev.getDate() + (direction * 7));
-      return newDate;
-    });
-  };
-
-
-
-  // Event handlers
-
-
-  const handleAcceptAppointment = async (appointment) => {
-    // Instead of directly accepting, show payment modal first
-    setSelectedAppointment(appointment);
-    setShowPaymentModal(true);
-  };
-
-  const handleReschedule = async (data) => {
-    try {
-      await execute(() => patientService.rescheduleAppointment(selectedAppointment.id, data));
-      await loadAppointments();
-      setShowRescheduleModal(false);
-      setSelectedAppointment(null);
-      rescheduleForm.reset();
-    } catch (error) {
-      console.error('Failed to reschedule appointment:', error);
-    }
-  };
-
-  const handleDeclineAppointment = async () => {
-    try {
-      await execute(() => patientService.declineAppointment(selectedAppointment.id));
-      await loadAppointments();
-      setShowDeclineModal(false);
-      setSelectedAppointment(null);
-    } catch (error) {
-      console.error('Failed to decline appointment:', error);
-    }
-  };
-
-//   const handlePayment = async () => {
-//     if (!selectedPaymentMethod) return;
-    
-//     try {
-//       await execute(() => patientService.processPayment(selectedAppointment.id, {
-//         paymentMethod: selectedPaymentMethod,
-//         amount: selectedAppointment.consultationFee
-//       }));
-//       await loadAppointments();
-//       setShowPaymentModal(false);
-//       setSelectedAppointment(null);
-//       setSelectedPaymentMethod('');
-//     } catch (error) {
-//       console.error('Failed to process payment:', error);
-//     }
-//   };
-
-        // New function to handle payment and then accept appointment
-    const handlePaymentAndAccept = async () => {
-      if (!selectedAppointment || !selectedPaymentMethod) return;
-    
-      try {
-        // First process the payment with correct ProcessPaymentDto structure
-        await execute(() => patientService.payConsultationFee(
-          selectedAppointment.caseId,
-          {
-            patientId: user.id, // Current logged-in patient ID
-            doctorId: selectedAppointment.doctor?.id || selectedAppointment.doctor.userId, // Doctor's ID
-            caseId: selectedAppointment.caseId,
-            paymentType: 'CONSULTATION', // PaymentType enum value
-            amount: selectedAppointment.doctor?.caseRate || selectedAppointment.consultationFee,
-            paymentMethod: selectedPaymentMethod // This should be the payment method code (e.g., 'CREDIT_CARD', 'PAYPAL', etc.)
-          }
-        ));
-      
-        // Reload appointments to reflect changes
-        await loadAppointments();
-      
-        // Close modal and reset state
-        setShowPaymentModal(false);
-        setSelectedAppointment(null);
-        setSelectedPaymentMethod('');
-      
-        // Show success message
-        alert('Payment processed successfully! Appointment confirmed.');
-      } catch (error) {
-        console.error('Failed to process payment and accept appointment:', error);
-        // Show error message
-        alert('Payment failed. Please try again.');
-      }
-    };
-
   const stats = getAppointmentStats();
-
-  // Compact Calendar component
-  const CompactCalendarView = () => {
-    const weekDates = getWeekDates(currentDate);
-    const today = new Date().toDateString();
-    
-    return (
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
-        {/* Calendar Header */}
-        <div className="flex items-center justify-between mb-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigateWeek(-1)}
-            icon={<ChevronLeft className="w-4 h-4" />}
-          />
-          <h3 className="text-lg font-medium text-gray-900">
-            {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-          </h3>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigateWeek(1)}
-            icon={<ChevronRight className="w-4 h-4" />}
-          />
-        </div>
-
-        {/* Week View */}
-        <div className="grid grid-cols-7 gap-2">
-          {weekDates.map((date, index) => {
-            const dayAppointments = getAppointmentsForDate(date);
-            const isToday = date.toDateString() === today;
-            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-            return (
-              <div 
-                key={index} 
-                className={`text-center p-2 rounded-lg border transition-colors ${
-                  isToday 
-                    ? 'bg-blue-50 border-blue-200' 
-                    : dayAppointments.length > 0 
-                      ? 'bg-primary-50 border-primary-200' 
-                      : 'border-gray-100 hover:bg-gray-50'
-                }`}
-              >
-                <div className="text-xs font-medium text-gray-500 mb-1">
-                  {dayNames[index]}
-                </div>
-                <div className={`text-lg font-medium mb-1 ${
-                  isToday ? 'text-blue-600' : 'text-gray-900'
-                }`}>
-                  {date.getDate()}
-                </div>
-                
-                {/* Appointment indicators */}
-                <div className="flex justify-center space-x-1">
-                  {dayAppointments.slice(0, 3).map((appointment, idx) => (
-                    <div
-                      key={idx}
-                      className={`w-2 h-2 rounded-full ${
-                        appointment.status?.toLowerCase() === 'completed' 
-                          ? 'bg-green-500' 
-                          : appointment.status?.toLowerCase() === 'cancelled' 
-                            ? 'bg-red-500' 
-                            : 'bg-primary-500'
-                      }`}
-                      title={`${appointment.doctor?.fullName} - ${formatTime(appointment.scheduledTime)}`}
-                    />
-                  ))}
-                  {dayAppointments.length > 3 && (
-                    <div className="text-xs text-gray-500">+{dayAppointments.length - 3}</div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* This week's appointments */}
-        {filteredAppointments.filter(apt => {
-          const aptDate = new Date(apt.scheduledTime);
-          return weekDates.some(date => date.toDateString() === aptDate.toDateString());
-        }).length > 0 && (
-          <div className="mt-4 pt-4 border-t border-gray-200">
-            <h4 className="text-sm font-medium text-gray-900 mb-2">This Week's Appointments</h4>
-            <div className="space-y-2 max-h-32 overflow-y-auto">
-              {filteredAppointments
-                .filter(apt => {
-                  const aptDate = new Date(apt.scheduledTime);
-                  return weekDates.some(date => date.toDateString() === aptDate.toDateString());
-                })
-                .map(appointment => (
-                  <div
-                    key={appointment.id}
-                    onClick={() => navigate(`/app/patient/appointments/${appointment.id}`)}
-                    className="flex items-center justify-between p-2 bg-gray-50 rounded cursor-pointer hover:bg-gray-100 transition-colors"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <div className="w-6 h-6 bg-primary-100 rounded-full flex items-center justify-center">
-                        {getConsultationTypeIcon(appointment.consultationType)}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">Dr. {appointment.doctor?.fullName}</p>
-                        <p className="text-xs text-gray-500">{formatDateTime(appointment.scheduledTime)}</p>
-                      </div>
-                    </div>
-                    <StatusBadge status={appointment.status} size="xs" />
-                  </div>
-                ))}
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -501,7 +370,7 @@ const PatientAppointments = () => {
                 >
                   Refresh
                 </Button>
-                <Link to="/app/patient/cases">
+                <Link to="/patient/cases">
                   <Button
                     variant="primary"
                     icon={<Calendar className="w-4 h-4" />}
@@ -590,7 +459,7 @@ const PatientAppointments = () => {
                 />
               </div>
 
-              {/* Filters and View Toggle */}
+              {/* Filters */}
               <div className="flex flex-wrap items-center space-x-4">
                 <div className="flex items-center space-x-2">
                   <Filter className="w-5 h-5 text-gray-400" />
@@ -625,28 +494,6 @@ const PatientAppointments = () => {
                   <option value="past">Past Appointments</option>
                 </select>
 
-                {/* View Toggle */}
-                <div className="flex items-center bg-gray-100 rounded-lg p-1">
-                  <Button
-                    variant={viewMode === 'list' ? 'primary' : 'ghost'}
-                    size="sm"
-                    onClick={() => setViewMode('list')}
-                    icon={<List className="w-4 h-4" />}
-                    className="text-xs"
-                  >
-                    List
-                  </Button>
-                  <Button
-                    variant={viewMode === 'calendar' ? 'primary' : 'ghost'}
-                    size="sm"
-                    onClick={() => setViewMode('calendar')}
-                    icon={<CalendarIcon className="w-4 h-4" />}
-                    className="text-xs"
-                  >
-                    Week
-                  </Button>
-                </div>
-
                 {(searchTerm || statusFilter !== 'all' || dateRange !== 'all') && (
                   <Button
                     variant="ghost"
@@ -665,7 +512,7 @@ const PatientAppointments = () => {
           </div>
         </Card>
 
-        {/* Appointments Display */}
+        {/* Appointments List */}
         <Card>
           <div className="p-6">
             {loading ? (
@@ -673,10 +520,6 @@ const PatientAppointments = () => {
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
               </div>
             ) : filteredAppointments.length > 0 ? (
-              viewMode === 'calendar' ? (
-                <CompactCalendarView />
-              ) : (
-                // ORIGINAL APPOINTMENT LIST - UNCHANGED
               <div className="space-y-4">
                 {filteredAppointments.map((appointment) => (
                   <div
@@ -720,11 +563,11 @@ const PatientAppointments = () => {
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                             {/* Case Rate and Case ID */}
                             <div className="flex items-center space-x-2">
-                              <DollarSign className="w-4 h-4 text-primary-500" />
-                              <span className="text-sm font-bold text-primary-600 bg-primary-50 px-2 py-1 rounded">
+                              <DollarSign className="w-4 h-4 text-red-500" />
+                              <span className="text-sm font-bold text-red-600 bg-red-50 px-2 py-1 rounded">
                                 ${appointment.doctor?.caseRate || 'N/A'}
                               </span>
-                              <FileText className="w-4 h-4 text-primary-500 ml-2" />
+                              <FileText className="w-4 h-4 text-blue-500 ml-2" />
                               <span className="text-sm text-gray-600">
                                 Case #{appointment.caseId}
                               </span>
@@ -869,7 +712,7 @@ const PatientAppointments = () => {
 
                           {/* Common Actions */}
                           <div className="flex space-x-2">
-                            {['scheduled'].includes(appointment.status?.toLowerCase()) && (
+                            {['scheduled', 'confirmed'].includes(appointment.status?.toLowerCase()) && (
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -908,7 +751,6 @@ const PatientAppointments = () => {
                   </div>
                 ))}
               </div>
-              )
             ) : (
               <div className="text-center py-12">
                 <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -925,12 +767,12 @@ const PatientAppointments = () => {
                   }
                 </p>
                 {!(searchTerm || statusFilter !== 'all' || dateRange !== 'all') && (
-                  <Link to="/app/patient/cases">
+                  <Link to="/patient/cases">
                     <Button
                       variant="primary"
                       icon={<Calendar className="w-4 h-4" />}
                     >
-                      Schedule Your First Appointment
+                      Submit a Case
                     </Button>
                   </Link>
                 )}
@@ -940,115 +782,233 @@ const PatientAppointments = () => {
         </Card>
       </div>
 
-      {/* Modals */}
-      {showRescheduleModal && (
-        <FormModal
-          title="Reschedule Appointment"
-          isOpen={showRescheduleModal}
-          onClose={() => {
-            setShowRescheduleModal(false);
-            setSelectedAppointment(null);
-            rescheduleForm.reset();
-          }}
-          onSubmit={rescheduleForm.handleSubmit(handleReschedule)}
-          loading={loading}
-        >
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Reason for Rescheduling *
-              </label>
-              <textarea
-                {...rescheduleForm.register('reason')}
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                placeholder="Please explain why you need to reschedule..."
-              />
-              {rescheduleForm.formState.errors.reason && (
-                <p className="text-sm text-red-600 mt-1">
-                  {rescheduleForm.formState.errors.reason.message}
-                </p>
-              )}
-            </div>
+      {/* Reschedule Request Modal */}
+      <FormModal
+        isOpen={showRescheduleModal}
+        onClose={() => {
+          setShowRescheduleModal(false);
+          setSelectedAppointment(null);
+          rescheduleForm.reset();
+        }}
+        onSubmit={rescheduleForm.handleSubmit(handleRescheduleRequest)}
+        title="Request Reschedule"
+        submitText="Send Request"
+        isLoading={loading}
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Reason for Reschedule *
+            </label>
+            <select
+              {...rescheduleForm.register('reason')}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+            >
+              <option value="">Select a reason</option>
+              <option value="personal_emergency">Personal Emergency</option>
+              <option value="medical_emergency">Medical Emergency</option>
+              <option value="work_conflict">Work Conflict</option>
+              <option value="travel">Travel</option>
+              <option value="other">Other</option>
+            </select>
+            {rescheduleForm.formState.errors.reason && (
+              <p className="text-sm text-red-600 mt-1">
+                {rescheduleForm.formState.errors.reason.message}
+              </p>
+            )}
+          </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Additional Notes
-              </label>
-              <textarea
-                {...rescheduleForm.register('additionalNotes')}
-                rows={2}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                placeholder="Any additional information..."
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Preferred New Dates *
+            </label>
+            <div className="space-y-2">
+              <input
+                type="datetime-local"
+                {...rescheduleForm.register('preferredDates.0')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                min={new Date().toISOString().slice(0, 16)}
               />
+              <input
+                type="datetime-local"
+                {...rescheduleForm.register('preferredDates.1')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                min={new Date().toISOString().slice(0, 16)}
+              />
+              <input
+                type="datetime-local"
+                {...rescheduleForm.register('preferredDates.2')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                min={new Date().toISOString().slice(0, 16)}
+              />
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Please provide up to 3 preferred time slots
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Additional Notes
+            </label>
+            <textarea
+              {...rescheduleForm.register('additionalNotes')}
+              rows={3}
+              placeholder="Any additional information for the doctor..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+            />
+          </div>
+
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+            <div className="flex items-start space-x-2">
+              <AlertTriangle className="w-4 h-4 text-yellow-600 mt-0.5" />
+              <div className="text-sm text-yellow-800">
+                <p className="font-medium">Important:</p>
+                <p>Reschedule requests are subject to doctor availability. You will be notified of the doctor's response.</p>
+              </div>
             </div>
           </div>
-        </FormModal>
-      )}
+        </div>
+      </FormModal>
 
-      {showDeclineModal && (
-        <ConfirmModal
-          title="Decline Appointment"
-          message="Are you sure you want to decline this appointment? This action cannot be undone."
-          isOpen={showDeclineModal}
-          onClose={() => {
-            setShowDeclineModal(false);
-            setSelectedAppointment(null);
-          }}
-          onConfirm={handleDeclineAppointment}
-          confirmText="Yes, Decline"
-          cancelText="Cancel"
-          loading={loading}
-          type="danger"
-        />
-      )}
+      {/* Decline Appointment Modal */}
+      <ConfirmModal
+        isOpen={showDeclineModal}
+        onClose={() => {
+          setShowDeclineModal(false);
+          setSelectedAppointment(null);
+        }}
+        onConfirm={(reason) => handleDeclineAppointment(reason || 'No reason provided')}
+        title="Decline Appointment"
+        message="Are you sure you want to decline this appointment? This action cannot be undone."
+        confirmText="Decline Appointment"
+        type="error"
+        isLoading={loading}
+        showReasonInput={true}
+        reasonPlaceholder="Please provide a reason for declining..."
+      />
 
-      {showPaymentModal && selectedAppointment && (
-        <FormModal
-          title="Complete Payment"
-          isOpen={showPaymentModal}
-          onClose={() => {
-            setShowPaymentModal(false);
-            setSelectedAppointment(null);
-            setSelectedPaymentMethod('');
-          }}
-          onSubmit={handlePaymentAndAccept}
-          loading={loading}
-        >
-          <div className="space-y-4">
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h4 className="font-medium text-gray-900 mb-2">Payment Summary</h4>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Consultation Fee:</span>
-                <span className="font-medium text-gray-900">
-                  ${selectedAppointment.consultationFee}
+      {/* Payment Modal */}
+      <FormModal
+        isOpen={showPaymentModal}
+        onClose={() => {
+          setShowPaymentModal(false);
+          setSelectedAppointment(null);
+          setSelectedPaymentMethod('');
+        }}
+        onSubmit={(e) => {
+          e.preventDefault();
+          // Use the new function that handles payment and acceptance
+          handlePaymentAndAccept();
+        }}
+        title="Pay to Confirm Appointment"
+        submitText="Pay & Accept Appointment"
+        isLoading={loading}
+      >
+        <div className="space-y-4">
+          {/* Payment Required Alert */}
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-amber-600" />
+              </div>
+              <div>
+                <h4 className="font-medium text-amber-900">Payment Required</h4>
+                <p className="text-sm text-amber-800">
+                  You must pay the consultation fee to confirm and accept this appointment.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Appointment Details */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                <Calendar className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <h4 className="font-medium text-blue-900">Appointment Details</h4>
+                <p className="text-sm text-blue-800">
+                  Doctor: {selectedAppointment?.doctor?.fullName}
+                </p>
+                <p className="text-sm text-blue-800">
+                  Date: {selectedAppointment && formatDateTime(selectedAppointment.scheduledTime)}
+                </p>
+                <p className="text-lg font-bold text-blue-900 mt-1">
+                  Consultation Fee: ${selectedAppointment?.doctor?.caseRate || selectedAppointment?.consultationFee}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Payment Method Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Payment Method *
+            </label>
+            <select
+              value={selectedPaymentMethod}
+              onChange={(e) => setSelectedPaymentMethod(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              required
+            >
+              <option value="">Select payment method</option>
+              {paymentMethods.
+              filter(method => method.isActive)
+              .map((method) => (
+                <option key={method.code} value={method.code}>
+                  {method.name.toUpperCase()}
+                </option>
+              ))}
+            </select>
+            
+            {paymentMethods.length === 0 && (
+              <div className="mt-2">
+                <Link to="/patient/payments">
+                  <Button variant="outline" size="sm">
+                    Add Payment Method
+                  </Button>
+                </Link>
+              </div>
+            )}
+          </div>
+
+          {/* Payment Breakdown */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">Payment Breakdown</h4>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Consultation Fee</span>
+                <span className="font-medium">
+                  ${selectedAppointment?.doctor?.caseRate || selectedAppointment?.consultationFee}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Platform Fee</span>
+                <span className="font-medium">$5.00</span>
+              </div>
+              <div className="flex justify-between border-t pt-2">
+                <span className="font-medium text-gray-900">Total</span>
+                <span className="font-bold text-gray-900">
+                  ${(parseFloat(selectedAppointment?.doctor?.caseRate || selectedAppointment?.consultationFee || 0) + 5).toFixed(2)}
                 </span>
               </div>
             </div>
+          </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Payment Method *
-              </label>
-              <select
-                value={selectedPaymentMethod}
-                onChange={(e) => setSelectedPaymentMethod(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              >
-                <option value="">Select payment method</option>
-                {paymentMethods.map(method => (
-                  <option key={method.id} value={method.value}>
-                    {method.displayName}
-                  </option>
-                ))}
-              </select>
-              {!selectedPaymentMethod && (
-                <p className="text-sm text-red-600 mt-1">Please select a payment method</p>
-              )}
+          {/* Security Notice */}
+          <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+            <div className="flex items-start space-x-2">
+              <CheckCircle className="w-4 h-4 text-green-600 mt-0.5" />
+              <div className="text-sm text-green-800">
+                <p className="font-medium">Secure Payment</p>
+                <p>Your payment information is encrypted and secure. After successful payment, your appointment will be automatically confirmed.</p>
+              </div>
             </div>
           </div>
-        </FormModal>
-      )}
+        </div>
+      </FormModal>
     </div>
   );
 };

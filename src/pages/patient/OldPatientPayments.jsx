@@ -5,32 +5,32 @@ import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
 import {
   CreditCard,
-  Calendar,
-  RefreshCw,
-  Eye,
-  Receipt,
-  DollarSign,
-  Download,
-  Trash2,
-  EyeOff,
   Plus,
-  FileText,
-  CheckCircle,
-  AlertTriangle,
+  Download,
+  Eye,
+  EyeOff,
+  Edit,
+  Trash2,
+  RefreshCw,
+  Calendar,
+  DollarSign,
   Clock,
-  Star
+  CheckCircle,
+  Receipt,
+  Search,
+  Settings,
+  AlertTriangle
 } from 'lucide-react';
 
 import Card, { StatsCard, AlertCard } from '../../components/common/Card';
 import Button from '../../components/common/Button';
-import Badge, { StatusBadge } from '../../components/common/Badge';
-import Modal, { ConfirmModal, FormModal } from '../../components/common/Modal';
+import Badge from '../../components/common/Badge';
+import Modal, { FormModal } from '../../components/common/Modal';
 import { useAuth } from '../../hooks/useAuth';
 import { useApi } from '../../hooks/useApi';
 import patientService from '../../services/api/patientService';
-import commonService from '../../services/api/commonService';
 
-// Validation schemas
+// Simple validation schema
 const paymentMethodSchema = yup.object({
   cardholderName: yup.string().required('Cardholder name is required'),
   cardNumber: yup.string().required('Card number is required').min(16, 'Invalid card number'),
@@ -45,7 +45,7 @@ const PatientPayments = () => {
   const { user } = useAuth();
   const { execute, loading } = useApi();
 
-  // State management
+  // Basic state
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [recentTransactions, setRecentTransactions] = useState([]);
   const [showAddCardModal, setShowAddCardModal] = useState(false);
@@ -71,10 +71,9 @@ const PatientPayments = () => {
     loadRecentTransactions();
   }, []);
 
-  // UPDATED: Use commonService.getMedicalConfigurations('PAYMENTMETHOD')
   const loadPaymentMethods = async () => {
     try {
-      const data = await execute(() => commonService.getMedicalConfigurations('PAYMENTMETHOD'));
+      const data = await execute(() => patientService.getPaymentMethods());
       setPaymentMethods(data || []);
     } catch (error) {
       console.error('Failed to load payment methods:', error);
@@ -122,61 +121,6 @@ const PatientPayments = () => {
     }
   };
 
-  // NEW: Export transactions to CSV
-  const exportToCSV = () => {
-    if (recentTransactions.length === 0) {
-      alert('No transactions to export');
-      return;
-    }
-
-    const headers = [
-      'Transaction ID',
-      'Date',
-      'Description',
-      'Amount',
-      'Status',
-      'Payment Method',
-      'Transaction Type',
-      'Reference ID',
-      'Platform Fee',
-      'Doctor ID',
-      'Case ID',
-      'Currency',
-      'Processing Fee',
-      'Net Amount'
-    ];
-
-    const csvContent = [
-      headers.join(','),
-      ...recentTransactions.map(transaction => [
-        transaction.id || '',
-        transaction.date ? formatDate(transaction.date) : '',
-        `"${transaction.description || ''}"`,
-        transaction.amount || 0,
-        transaction.status || '',
-        transaction.paymentMethod || '',
-        transaction.type || transaction.transactionType || '',
-        transaction.referenceId || transaction.transactionId || '',
-        transaction.platformFee || 0,
-        transaction.doctorId || '',
-        transaction.caseId || '',
-        transaction.currency || 'USD',
-        transaction.processingFee || 0,
-        transaction.netAmount || (transaction.amount - (transaction.platformFee || 0) - (transaction.processingFee || 0))
-      ].join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `payment-history-${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -193,21 +137,12 @@ const PatientPayments = () => {
   };
 
   const getCardBrand = (cardNumber) => {
-    if (!cardNumber) return 'Card';
-    const number = cardNumber.toString().replace(/\s+/g, '');
+    const number = cardNumber.replace(/\s+/g, '');
     if (/^4/.test(number)) return 'Visa';
     if (/^5[1-5]/.test(number)) return 'Mastercard';
     if (/^3[47]/.test(number)) return 'American Express';
     if (/^6/.test(number)) return 'Discover';
     return 'Card';
-  };
-
-  // UPDATED: Calculate total payments for the new stats card
-  const getTotalPayments = () => {
-    var totalAmount = recentTransactions
-      .filter(t => t.status.toLowerCase() === 'completed')
-      .reduce((sum, t) => sum + (t.amount || 0), 0);
-    return totalAmount;
   };
 
   const tabs = [
@@ -218,7 +153,7 @@ const PatientPayments = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header - REMOVED Add Payment Method Button */}
+      {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="py-6">
@@ -240,7 +175,13 @@ const PatientPayments = () => {
                 >
                   Refresh
                 </Button>
-                {/* REMOVED: Add Payment Method Button */}
+                <Button
+                  variant="primary"
+                  icon={<Plus className="w-4 h-4" />}
+                  onClick={() => setShowAddCardModal(true)}
+                >
+                  Add Payment Method
+                </Button>
               </div>
             </div>
           </div>
@@ -273,7 +214,7 @@ const PatientPayments = () => {
             {/* Overview Tab */}
             {activeTab === 'overview' && (
               <div className="space-y-6">
-                {/* UPDATED Stats Cards - Replaced "This Month" with "Total Payments" */}
+                {/* Stats Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <StatsCard
                     title="Payment Methods"
@@ -289,11 +230,14 @@ const PatientPayments = () => {
                     className="bg-gradient-to-br from-green-50 to-green-100"
                   />
                   
-                  {/* UPDATED: Replaced "This Month" with "Total Payments" */}
                   <StatsCard
-                    title="Total Payments"
-                    value={formatCurrency(getTotalPayments())}
-                    icon={<DollarSign className="w-6 h-6" />}
+                    title="This Month"
+                    value={formatCurrency(
+                      recentTransactions
+                        .filter(t => new Date(t.date).getMonth() === new Date().getMonth())
+                        .reduce((sum, t) => sum + t.amount, 0)
+                    )}
+                    icon={<Calendar className="w-6 h-6" />}
                     className="bg-gradient-to-br from-purple-50 to-purple-100"
                   />
                 </div>
@@ -304,7 +248,7 @@ const PatientPayments = () => {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => navigate('/app/patient/payment-history')}
+                      onClick={() => navigate('/patient/payment-history')}
                     >
                       View All
                     </Button>
@@ -356,48 +300,48 @@ const PatientPayments = () => {
                 {paymentMethods.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {paymentMethods.map((method) => (
-                      <Card key={method.id}>
+                      <Card key={method.id} className="relative">
+                        {method.isDefault && (
+                          <div className="absolute top-4 right-4">
+                            <Badge variant="success" size="sm">Default</Badge>
+                          </div>
+                        )}
+                        
                         <div className="p-6">
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                                <CreditCard className="w-6 h-6 text-gray-600" />
-                              </div>
-                              
-                              <div>
-                                <div className="flex items-center space-x-2">
-                                  <h3 className="font-medium text-gray-900">
-                                    {getCardBrand(method.cardNumber || method.number)}
-                                  </h3>
-                                  {method.isDefault && (
-                                    <Badge variant="success" size="sm">Default</Badge>
-                                  )}
-                                </div>
-                                <p className="text-sm text-gray-600">
-                                  •••• •••• •••• {(method.cardNumber || method.number || '****').toString().slice(-4)}
-                                </p>
-                              </div>
+                          <div className="flex items-center space-x-3 mb-4">
+                            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                              <CreditCard className="w-6 h-6 text-white" />
+                            </div>
+                            <div>
+                              <h3 className="font-semibold text-gray-900">
+                                {getCardBrand(method.cardNumber)}
+                              </h3>
+                              <p className="text-sm text-gray-600">
+                                •••• •••• •••• {method.lastFour || method.cardNumber.slice(-4)}
+                              </p>
                             </div>
                           </div>
 
-                          <div className="mt-4 space-y-2">
-                            <div className="flex justify-between text-sm">
-                              <span className="text-gray-600">Cardholder</span>
-                              <span className="font-medium text-gray-900">{method.cardholderName || method.holderName || method.name || 'N/A'}</span>
-                            </div>
-                            
-                            <div className="flex justify-between text-sm">
-                              <span className="text-gray-600">Expires</span>
-                              <span className="font-medium text-gray-900">
-                                {(method.expiryMonth || method.expMonth || '**')}/{(method.expiryYear || method.expYear || '****')}
+                          <div className="space-y-3">
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-gray-600">Cardholder</span>
+                              <span className="text-sm font-medium text-gray-900">
+                                {method.cardholderName}
                               </span>
                             </div>
                             
-                            <div className="flex justify-between items-center text-sm">
-                              <span className="text-gray-600">CVV</span>
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-gray-600">Expires</span>
+                              <span className="text-sm font-medium text-gray-900">
+                                {method.expiryMonth}/{method.expiryYear}
+                              </span>
+                            </div>
+                            
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-gray-600">CVV</span>
                               <div className="flex items-center space-x-2">
-                                <span className="font-medium text-gray-900">
-                                  {showCardDetails[method.id] ? (method.cvv || method.cvc || '•••') : '•••'}
+                                <span className="text-sm font-medium text-gray-900">
+                                  {showCardDetails[method.id] ? method.cvv : '•••'}
                                 </span>
                                 <button
                                   onClick={() => setShowCardDetails({
@@ -451,28 +395,22 @@ const PatientPayments = () => {
                     <p className="text-gray-600 mb-6">
                       Add a payment method to make payments for consultations.
                     </p>
-                    {/* REMOVED: Add Your First Payment Method Button */}
+                    <Button
+                      variant="primary"
+                      icon={<Plus className="w-4 h-4" />}
+                      onClick={() => setShowAddCardModal(true)}
+                    >
+                      Add Your First Payment Method
+                    </Button>
                   </div>
                 )}
               </div>
             )}
 
-            {/* Transaction History Tab - ENHANCED with all details and CSV export */}
+            {/* Transaction History Tab */}
             {activeTab === 'history' && (
               <div className="space-y-6">
-                <Card 
-                  title="All Transactions"
-                  action={
-                    <Button
-                      variant="primary"
-                      icon={<Download className="w-4 h-4" />}
-                      onClick={exportToCSV}
-                      disabled={recentTransactions.length === 0}
-                    >
-                      Export CSV
-                    </Button>
-                  }
-                >
+                <Card>
                   <div className="p-6">
                     {recentTransactions.length > 0 ? (
                       <div className="space-y-4">
@@ -483,34 +421,19 @@ const PatientPayments = () => {
                                 <DollarSign className="w-5 h-5 text-gray-500" />
                               </div>
                               
-                              {/* ENHANCED: All transaction details */}
-                              <div className="flex-1">
+                              <div>
                                 <h4 className="font-medium text-gray-900">{transaction.description}</h4>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2 text-sm text-gray-600">
-                                  <div className="space-y-1">
-                                    <p><span className="font-medium">Date:</span> {formatDate(transaction.date)}</p>
-                                    <p><span className="font-medium">ID:</span> {transaction.id}</p>
-                                    <p><span className="font-medium">Reference:</span> {transaction.referenceId || transaction.transactionId || 'N/A'}</p>
-                                  </div>
-                                  <div className="space-y-1">
-                                    <p><span className="font-medium">Type:</span> {transaction.type || transaction.transactionType || 'N/A'}</p>
-                                    <p><span className="font-medium">Payment Method:</span> {transaction.paymentMethod || 'Credit Card'}</p>
-                                    <p><span className="font-medium">Currency:</span> {transaction.currency || 'USD'}</p>
-                                  </div>
-                                  <div className="space-y-1">
-                                    {transaction.doctorId && <p><span className="font-medium">Doctor ID:</span> {transaction.doctorId}</p>}
-                                    {transaction.caseId && <p><span className="font-medium">Case ID:</span> {transaction.caseId}</p>}
-                                    {transaction.platformFee && <p><span className="font-medium">Platform Fee:</span> {formatCurrency(transaction.platformFee)}</p>}
-                                  </div>
+                                <div className="flex items-center space-x-4 text-sm text-gray-600">
+                                  <span>{formatDate(transaction.date)}</span>
+                                  <span>•</span>
+                                  <span>ID: {transaction.id}</span>
                                 </div>
                               </div>
                             </div>
                             
                             <div className="flex items-center space-x-4">
                               <Badge 
-                                variant={transaction.status === 'completed' ? 'success' : 
-                                         transaction.status === 'pending' ? 'warning' : 
-                                         transaction.status === 'failed' ? 'error' : 'default'}
+                                variant={transaction.status === 'completed' ? 'success' : 'warning'}
                               >
                                 {transaction.status}
                               </Badge>
@@ -519,11 +442,9 @@ const PatientPayments = () => {
                                 <div className="text-lg font-semibold text-gray-900">
                                   {formatCurrency(transaction.amount)}
                                 </div>
-                                {transaction.netAmount && transaction.netAmount !== transaction.amount && (
-                                  <div className="text-sm text-gray-600">
-                                    Net: {formatCurrency(transaction.netAmount)}
-                                  </div>
-                                )}
+                                <div className="text-sm text-gray-600">
+                                  {transaction.paymentMethod || 'Credit Card'}
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -543,7 +464,132 @@ const PatientPayments = () => {
         </Card>
       </div>
 
-      {/* REMOVED: Add Payment Method Modal completely */}
+      {/* Add Payment Method Modal */}
+      <FormModal
+        show={showAddCardModal}
+        onClose={() => {
+          setShowAddCardModal(false);
+          paymentForm.reset();
+        }}
+        title="Add Payment Method"
+        onSubmit={paymentForm.handleSubmit(handleAddPaymentMethod)}
+        loading={loading}
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Cardholder Name *
+            </label>
+            <input
+              type="text"
+              {...paymentForm.register('cardholderName')}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              placeholder="John Doe"
+            />
+            {paymentForm.formState.errors.cardholderName && (
+              <p className="text-red-500 text-sm mt-1">
+                {paymentForm.formState.errors.cardholderName.message}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Card Number *
+            </label>
+            <input
+              type="text"
+              {...paymentForm.register('cardNumber')}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              placeholder="1234 5678 9012 3456"
+              maxLength="19"
+            />
+            {paymentForm.formState.errors.cardNumber && (
+              <p className="text-red-500 text-sm mt-1">
+                {paymentForm.formState.errors.cardNumber.message}
+              </p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Month *
+              </label>
+              <select
+                {...paymentForm.register('expiryMonth')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="">MM</option>
+                {Array.from({ length: 12 }, (_, i) => (
+                  <option key={i + 1} value={String(i + 1).padStart(2, '0')}>
+                    {String(i + 1).padStart(2, '0')}
+                  </option>
+                ))}
+              </select>
+              {paymentForm.formState.errors.expiryMonth && (
+                <p className="text-red-500 text-sm mt-1">
+                  {paymentForm.formState.errors.expiryMonth.message}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Year *
+              </label>
+              <select
+                {...paymentForm.register('expiryYear')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="">YYYY</option>
+                {Array.from({ length: 10 }, (_, i) => {
+                  const year = new Date().getFullYear() + i;
+                  return (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  );
+                })}
+              </select>
+              {paymentForm.formState.errors.expiryYear && (
+                <p className="text-red-500 text-sm mt-1">
+                  {paymentForm.formState.errors.expiryYear.message}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                CVV *
+              </label>
+              <input
+                type="text"
+                {...paymentForm.register('cvv')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                placeholder="123"
+                maxLength="4"
+              />
+              {paymentForm.formState.errors.cvv && (
+                <p className="text-red-500 text-sm mt-1">
+                  {paymentForm.formState.errors.cvv.message}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              {...paymentForm.register('isDefault')}
+              className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+            />
+            <label className="ml-2 text-sm text-gray-700">
+              Set as default payment method
+            </label>
+          </div>
+        </div>
+      </FormModal>
     </div>
   );
 };
