@@ -466,40 +466,72 @@ const SubscriptionManagement = () => {
                       </div>
                     </Card>
 
+                    
                     {/* Plan Features */}
                     <Card title="Plan Features">
                       <div className="p-6">
                         {currentSubscription && (
                           <div className="space-y-3">
-                            {currentSubscription.features?.map((feature, index) => (
-                              <div key={index} className="flex items-center space-x-3">
-                                <CheckCircle className="w-5 h-5 text-green-500" />
-                                <span className="text-gray-700">{feature}</span>
-                              </div>
-                            )) || (
-                              <div className="space-y-3">
-                                <div className="flex items-center space-x-3">
-                                  <CheckCircle className="w-5 h-5 text-green-500" />
-                                  <span className="text-gray-700">Submit medical cases</span>
+                            {(() => {
+                              // Find the current plan from availablePlans based on currentSubscription.plan
+                              const currentPlan = availablePlans.find(plan => 
+                                plan.code?.toLowerCase() === currentSubscription.planType?.toLowerCase() ||
+                                plan.type?.toLowerCase() === currentSubscription.planType?.toLowerCase()
+                              );
+                              
+                              // Parse attributes JSON and extract features
+                              let features = null;
+                              if (currentPlan?.attributes) {
+                                try {
+                                  const attributes = typeof currentPlan.attributes === 'string' 
+                                    ? JSON.parse(currentPlan.attributes) 
+                                    : currentPlan.attributes;
+                                  features = attributes.features;
+                                } catch (error) {
+                                  console.error('Error parsing plan attributes:', error);
+                                }
+                              }
+                              
+                              // Fallback to currentSubscription.features if attributes parsing fails
+                              if (!features) {
+                                features = currentSubscription.features;
+                              }
+                              
+                              if (features && features.length > 0) {
+                                return features.map((feature, index) => (
+                                  <div key={index} className="flex items-center space-x-3">
+                                    <CheckCircle className="w-5 h-5 text-green-500" />
+                                    <span className="text-gray-700">{feature}</span>
+                                  </div>
+                                ));
+                              }
+                              
+                              // Final fallback if no features found
+                              return (
+                                <div className="space-y-3">
+                                  <div className="flex items-center space-x-3">
+                                    <CheckCircle className="w-5 h-5 text-green-500" />
+                                    <span className="text-gray-700">Submit medical cases</span>
+                                  </div>
+                                  <div className="flex items-center space-x-3">
+                                    <CheckCircle className="w-5 h-5 text-green-500" />
+                                    <span className="text-gray-700">Video consultations</span>
+                                  </div>
+                                  <div className="flex items-center space-x-3">
+                                    <CheckCircle className="w-5 h-5 text-green-500" />
+                                    <span className="text-gray-700">Document uploads</span>
+                                  </div>
+                                  <div className="flex items-center space-x-3">
+                                    <CheckCircle className="w-5 h-5 text-green-500" />
+                                    <span className="text-gray-700">Consultation reports</span>
+                                  </div>
+                                  <div className="flex items-center space-x-3">
+                                    <CheckCircle className="w-5 h-5 text-green-500" />
+                                    <span className="text-gray-700">24/7 support</span>
+                                  </div>
                                 </div>
-                                <div className="flex items-center space-x-3">
-                                  <CheckCircle className="w-5 h-5 text-green-500" />
-                                  <span className="text-gray-700">Video consultations</span>
-                                </div>
-                                <div className="flex items-center space-x-3">
-                                  <CheckCircle className="w-5 h-5 text-green-500" />
-                                  <span className="text-gray-700">Document uploads</span>
-                                </div>
-                                <div className="flex items-center space-x-3">
-                                  <CheckCircle className="w-5 h-5 text-green-500" />
-                                  <span className="text-gray-700">Consultation reports</span>
-                                </div>
-                                <div className="flex items-center space-x-3">
-                                  <CheckCircle className="w-5 h-5 text-green-500" />
-                                  <span className="text-gray-700">24/7 support</span>
-                                </div>
-                              </div>
-                            )}
+                              );
+                            })()}
                           </div>
                         )}
                       </div>
@@ -562,179 +594,195 @@ const SubscriptionManagement = () => {
             )}
 
             {/* Plans Tab */}
-            {activeTab === 'plans' && (
-              <div className="space-y-6">
-                {/* Billing Cycle Toggle */}
-                <div className="text-center">
-                  <div className="inline-flex items-center bg-gray-100 rounded-lg p-1">
-                    <button
-                      onClick={() => setBillingCycle('monthly')}
-                      className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                        billingCycle === 'monthly'
-                          ? 'bg-white text-gray-900 shadow-sm'
-                          : 'text-gray-600 hover:text-gray-900'
-                      }`}
-                    >
-                      Monthly
-                    </button>
-                    <button
-                      onClick={() => setBillingCycle('yearly')}
-                      className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                        billingCycle === 'yearly'
-                          ? 'bg-white text-gray-900 shadow-sm'
-                          : 'text-gray-600 hover:text-gray-900'
-                      }`}
-                    >
-                      Yearly
-                      <Badge variant="success" size="xs" className="ml-2">
-                        Save 20%
-                      </Badge>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Promo Code */}
-                <div className="max-w-md mx-auto">
-                  <div className="flex space-x-2">
-                    <input
-                      type="text"
-                      placeholder="Enter promo code"
-                      value={promoCode}
-                      onChange={(e) => setPromoCode(e.target.value)}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                    />
-                    <Button
-                      variant="outline"
-                      onClick={handleApplyPromoCode}
-                      disabled={!promoCode}
-                    >
-                      Apply
-                    </Button>
-                  </div>
-                  {discount && (
-                    <div className="mt-2 flex items-center space-x-2 text-green-600">
-                      <Gift className="w-4 h-4" />
-                      <span className="text-sm">
-                        {discount.percentage}% discount applied!
-                      </span>
+              {activeTab === 'plans' && (
+                <div className="space-y-8">
+                  {/* Billing Cycle Toggle */}
+                  <div className="flex justify-center">
+                    <div className="bg-gray-100 rounded-lg p-1 flex space-x-1">
+                      <button
+                        onClick={() => setBillingCycle('monthly')}
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                          billingCycle === 'monthly'
+                            ? 'bg-white text-gray-900 shadow-sm'
+                            : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                      >
+                        Monthly
+                      </button>
+                      <button
+                        onClick={() => setBillingCycle('yearly')}
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                          billingCycle === 'yearly'
+                            ? 'bg-white text-gray-900 shadow-sm'
+                            : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                      >
+                        Yearly
+                        <Badge variant="success" size="xs" className="ml-2">
+                          Save 20%
+                        </Badge>
+                      </button>
                     </div>
-                  )}
-                </div>
+                  </div>
 
-                {/* Plans Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                  {availablePlans.map((plan) => (
-                    <div
-                      key={plan.id}
-                      className={`relative bg-white rounded-2xl border-2 transition-all duration-200 hover:shadow-xl ${
-                        plan.popular
-                          ? 'border-primary-500 shadow-lg'
-                          : 'border-gray-200 hover:border-primary-300'
-                      }`}
-                    >
-                      {plan.popular && (
-                        <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                          <Badge variant="primary" className="px-3 py-1">
-                            Most Popular
-                          </Badge>
-                        </div>
-                      )}
+                  {/* Promo Code */}
+                  <div className="max-w-md mx-auto">
+                    <div className="flex space-x-2">
+                      <input
+                        type="text"
+                        placeholder="Enter promo code"
+                        value={promoCode}
+                        onChange={(e) => setPromoCode(e.target.value)}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      />
+                      <Button
+                        variant="outline"
+                        onClick={handleApplyPromoCode}
+                        disabled={!promoCode}
+                      >
+                        Apply
+                      </Button>
+                    </div>
+                    {discount && (
+                      <div className="mt-2 flex items-center space-x-2 text-green-600">
+                        <Gift className="w-4 h-4" />
+                        <span className="text-sm">
+                          {discount.percentage}% discount applied!
+                        </span>
+                      </div>
+                    )}
+                  </div>
 
-                      <div className="p-8">
-                        <div className="text-center mb-8">
-                          <div className={`w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br ${getPlanColor(plan.type)} flex items-center justify-center`}>
-                            {getPlanIcon(plan.type)}
-                          </div>
-                          <h3 className="text-2xl font-bold text-gray-900">{plan.name}</h3>
-                          <p className="text-gray-600 mt-2">{plan.description}</p>
-                        </div>
+                  {/* Plans Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    {availablePlans.map((plan) => {
+                      // Parse the attributes JSON string
+                      let planAttributes = {};
+                      try {
+                        planAttributes = typeof plan.attributes === 'string' 
+                          ? JSON.parse(plan.attributes) 
+                          : plan.attributes || {};
+                      } catch (error) {
+                        console.error('Error parsing plan attributes:', error);
+                      }
 
-                        <div className="text-center mb-8">
-                          <div className="flex items-baseline justify-center">
-                            <span className="text-4xl font-bold text-gray-900">
-                              ${calculatePrice(plan).toFixed(0)}
-                            </span>
-                            <span className="text-gray-600 ml-2">
-                              /{billingCycle === 'yearly' ? 'year' : 'month'}
-                            </span>
-                          </div>
-                          {billingCycle === 'yearly' && plan.yearlyDiscount && (
-                            <div className="mt-2 flex items-center justify-center space-x-2 text-green-600">
-                              <Percent className="w-4 h-4" />
-                              <span className="text-sm">
-                                Save ${(plan.monthlyPrice * 12 - plan.yearlyPrice).toFixed(0)} annually
-                              </span>
-                            </div>
-                          )}
-                          {discount && (
-                            <div className="mt-2 text-green-600 text-sm">
-                              Original: ${billingCycle === 'yearly' ? plan.yearlyPrice : plan.monthlyPrice}
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="space-y-4 mb-8">
-                          {plan.features.map((feature, index) => (
-                            <div key={index} className="flex items-center space-x-3">
-                              <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
-                              <span className="text-gray-700">{feature}</span>
-                            </div>
-                          ))}
-                        </div>
-
-                        <Button
-                          variant={plan.popular ? 'primary' : 'outline'}
-                          className="w-full"
-                          onClick={() => {
-                            setSelectedPlan(plan);
-                            if (currentSubscription?.status === 'active') {
-                              setShowUpgradeModal(true);
-                            } else {
-                              subscriptionForm.setValue('planType', plan.id);
-                              setShowUpgradeModal(true);
-                            }
-                          }}
-                          disabled={currentSubscription?.plan === plan.type}
+                      const isCurrentPlan = currentSubscription?.plan?.toLowerCase() === plan.code?.toLowerCase();
+                      
+                      return (
+                        <div
+                          key={plan.code}
+                          className={`relative bg-white rounded-2xl border-2 transition-all duration-200 hover:shadow-xl ${
+                            planAttributes.popular
+                              ? 'border-primary-500 shadow-lg'
+                              : 'border-gray-200 hover:border-primary-300'
+                          }`}
                         >
-                          {currentSubscription?.plan === plan.type
-                            ? 'Current Plan'
-                            : currentSubscription?.status === 'active'
-                            ? 'Upgrade to This Plan'
-                            : 'Choose This Plan'
-                          }
-                        </Button>
+                          {planAttributes.popular && (
+                            <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                              <Badge variant="primary" className="px-3 py-1">
+                                Most Popular
+                              </Badge>
+                            </div>
+                          )}
+
+                          <div className="p-8">
+                            <div className="text-center mb-8">
+                              <div className={`w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br ${getPlanColor(plan.code)} flex items-center justify-center`}>
+                                {getPlanIcon(plan.code)}
+                              </div>
+                              <h3 className="text-2xl font-bold text-gray-900">{plan.name}</h3>
+                              <p className="text-gray-600 mt-2">{plan.description}</p>
+                            </div>
+
+                            <div className="text-center mb-8">
+                              <div className="flex items-baseline justify-center">
+                                <span className="text-4xl font-bold text-gray-900">
+                                  ${(billingCycle === 'yearly' ? planAttributes.yearlyPrice : planAttributes.monthlyPrice)?.toFixed(0) || '0'}
+                                </span>
+                                <span className="text-gray-600 ml-2">
+                                  /{billingCycle === 'yearly' ? 'year' : 'month'}
+                                </span>
+                              </div>
+                              {billingCycle === 'yearly' && planAttributes.yearlyDiscount && (
+                                <div className="mt-2 flex items-center justify-center space-x-2 text-green-600">
+                                  <Percent className="w-4 h-4" />
+                                  <span className="text-sm">
+                                    Save ${((planAttributes.monthlyPrice * 12) - planAttributes.yearlyPrice).toFixed(0)} annually
+                                  </span>
+                                </div>
+                              )}
+                              {discount && (
+                                <div className="mt-2 text-green-600 text-sm">
+                                  Original: ${billingCycle === 'yearly' ? planAttributes.yearlyPrice : planAttributes.monthlyPrice}
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="space-y-4 mb-8">
+                              {planAttributes.features?.map((feature, index) => (
+                                <div key={index} className="flex items-center space-x-3">
+                                  <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+                                  <span className="text-gray-700">{feature}</span>
+                                </div>
+                              )) || (
+                                <div className="text-gray-500 text-sm">No features available</div>
+                              )}
+                            </div>
+
+                            <Button
+                              variant={planAttributes.popular ? 'primary' : 'outline'}
+                              className="w-full"
+                              onClick={() => {
+                                setSelectedPlan(plan);
+                                if (currentSubscription?.status === 'active') {
+                                  setShowUpgradeModal(true);
+                                } else {
+                                  subscriptionForm.setValue('planType', plan.code);
+                                  setShowUpgradeModal(true);
+                                }
+                              }}
+                              disabled={isCurrentPlan}
+                            >
+                              {isCurrentPlan
+                                ? 'Current Plan'
+                                : currentSubscription?.status === 'active'
+                                ? 'Upgrade to This Plan'
+                                : 'Choose This Plan'
+                              }
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* FAQ Section */}
+                  <Card title="Frequently Asked Questions">
+                    <div className="p-6 space-y-6">
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-2">Can I change my plan anytime?</h4>
+                        <p className="text-gray-600 text-sm">
+                          Yes, you can upgrade or downgrade your plan at any time. Changes take effect immediately and billing is prorated.
+                        </p>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-2">What happens if I cancel?</h4>
+                        <p className="text-gray-600 text-sm">
+                          You'll continue to have access to your subscription benefits until the end of your current billing period.
+                        </p>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-2">Are there any setup fees?</h4>
+                        <p className="text-gray-600 text-sm">
+                          No, there are no setup fees or hidden charges. You only pay for your selected subscription plan.
+                        </p>
                       </div>
                     </div>
-                  ))}
+                  </Card>
                 </div>
-
-                {/* FAQ Section */}
-                <Card title="Frequently Asked Questions">
-                  <div className="p-6 space-y-6">
-                    <div>
-                      <h4 className="font-medium text-gray-900 mb-2">Can I change my plan anytime?</h4>
-                      <p className="text-gray-600 text-sm">
-                        Yes, you can upgrade or downgrade your plan at any time. Changes take effect immediately and billing is prorated.
-                      </p>
-                    </div>
-                    
-                    <div>
-                      <h4 className="font-medium text-gray-900 mb-2">What happens if I cancel?</h4>
-                      <p className="text-gray-600 text-sm">
-                        You'll continue to have access to your subscription benefits until the end of your current billing period.
-                      </p>
-                    </div>
-                    
-                    <div>
-                      <h4 className="font-medium text-gray-900 mb-2">Are there any setup fees?</h4>
-                      <p className="text-gray-600 text-sm">
-                        No, there are no setup fees or hidden charges. You only pay the subscription amount.
-                      </p>
-                    </div>
-                  </div>
-                </Card>
-              </div>
-            )}
+              )}
 
             {/* Billing Tab */}
             {activeTab === 'billing' && (
