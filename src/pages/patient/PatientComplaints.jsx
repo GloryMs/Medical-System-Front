@@ -186,6 +186,7 @@ const PatientComplaints = () => {
     try {
       // Map form data to backend expected format
       const complaintData = {
+        patientId: user.id,
         complaintType: data.complaintType,
         description: data.description,
         priority: data.priority,
@@ -459,7 +460,7 @@ const PatientComplaints = () => {
                             <span>Case #{complaint.caseId}</span>
                           )}
                           {complaint.doctorId && (
-                            <span>Dr. {doctors.find(d => d.id === complaint.doctorId)?.name || 'Unknown'}</span>
+                            <span>Doctor# {doctors.find(d => d.id === complaint.doctorId)?.doctorId || 'Unknown'}</span>
                           )}
                         </div>
                       </div>

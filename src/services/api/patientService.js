@@ -192,12 +192,12 @@ const patientService = {
     return await api.get(`/patient-service/api/patients/notifications/2`);
   },
 
-  markNotificationAsRead: async (notificationId) => {
-    return await api.post(`/patient-service/api/patients/notifications/${notificationId}/read`);
-  },
+  markNotificationAsRead: async (notificationId, userId) => {
+  return await api.put(`/patient-service/api/patients/notifications/${notificationId}/${userId}/read?`);
+},
 
-  markAllNotificationsAsRead: async () => {
-    return await api.post('/patient-service/api/patients/notifications/read-all');
+  markAllNotificationsAsRead: async (userId) => {
+    return await api.put(`/patient-service/api/patients/notifications/${userId}/read-all`);
   },
 
   deleteNotification: async (notificationId) => {

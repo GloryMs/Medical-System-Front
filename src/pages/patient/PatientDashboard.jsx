@@ -157,32 +157,24 @@ const PatientDashboard = () => {
           title="Total Cases"
           value={dashboardData.stats.totalCases}
           icon={<FileText className="w-6 h-6" />}
-          change="+2 this month"
-          changeType="increase"
         />
         
         <StatsCard
           title="Active Cases"
           value={dashboardData.stats.activeCases}
           icon={<Activity className="w-6 h-6" />}
-          change="2 in progress"
-          changeType="neutral"
         />
         
         <StatsCard
           title="Completed Cases"
           value={dashboardData.stats.completedCases}
           icon={<CheckCircle className="w-6 h-6" />}
-          change="+1 this week"
-          changeType="increase"
         />
         
         <StatsCard
           title="Upcoming Appointments"
           value={dashboardData.stats.upcomingAppointments}
           icon={<Calendar className="w-6 h-6" />}
-          change="Next: Tomorrow"
-          changeType="neutral"
         />
       </div>
 
@@ -253,18 +245,18 @@ const PatientDashboard = () => {
         >
           <div className="space-y-4">
             {dashboardData.upcomingAppointments.length > 0 ? (
-              dashboardData.upcomingAppointments.slice(0, 3).map((appointment) => (
+              dashboardData.upcomingAppointments.slice(0, 2).map((appointment) => (
                 <div key={appointment.id} className="flex items-center justify-between p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
                   <div className="flex items-center space-x-4">
                     <div className="p-2 bg-blue-100 rounded-lg">
-                      {appointment.type === 'VIDEO' ? (
+                      {appointment.consultationType === 'VIDEO' ? (
                         <Video className="w-5 h-5 text-blue-600" />
                       ) : (
                         <Phone className="w-5 h-5 text-blue-600" />
                       )}
                     </div>
                     <div>
-                      <h4 className="font-medium text-gray-900">{appointment.doctorName}</h4>
+                      <h4 className="font-medium text-gray-900">{appointment.doctor.fullName}</h4>
                       <div className="flex items-center space-x-2 text-sm text-gray-600">
                         <Clock className="w-4 h-4" />
                         <span>{formatDate(appointment.scheduledTime)}</span>
@@ -278,13 +270,12 @@ const PatientDashboard = () => {
                     </div>
                   </div>
                   <div className="flex space-x-2">
-                    {appointment.status === 'SCHEDULED' && (
+                    {appointment.status === 'CONFIRMED' && (
                       <>
-                        <Button variant="outline" size="sm">Reschedule</Button>
                         <Button size="sm">Join</Button>
                       </>
                     )}
-                    {appointment.status === 'PENDING' && (
+                    { (appointment.status === 'PENDING' || appointment.status === 'SCHEDULED')  && (
                       <>
                         <Button variant="outline" size="sm">Decline</Button>
                         <Button size="sm">Accept</Button>
