@@ -48,6 +48,7 @@ import Modal, { ConfirmModal, FormModal } from '../../components/common/Modal';
 import { useAuth } from '../../hooks/useAuth';
 import { useApi } from '../../hooks/useApi';
 import patientService from '../../services/api/patientService';
+import commonService from '../../services/api/commonService';
 
 // Validation schemas
 const subscriptionSchema = yup.object({
@@ -133,7 +134,7 @@ const SubscriptionManagement = () => {
 
   const loadAvailablePlans = async () => {
     try {
-      const plans = await execute(() => patientService.getSubscriptionPlans());
+      const plans = await execute(() => commonService.getMedicalConfigurations('PLAN'));
       setAvailablePlans(plans || []);
     } catch (error) {
       console.error('Failed to load subscription plans:', error);
@@ -142,7 +143,7 @@ const SubscriptionManagement = () => {
 
   const loadPaymentMethods = async () => {
     try {
-      const methods = await execute(() => patientService.getPaymentMethods());
+      const methods = await execute(() => commonService.getMedicalConfigurations('PAYMENTMETHOD'));
       setPaymentMethods(methods || []);
     } catch (error) {
       console.error('Failed to load payment methods:', error);
@@ -239,8 +240,8 @@ const SubscriptionManagement = () => {
   };
 
   const getDaysUntilExpiry = () => {
-    if (!currentSubscription?.expiry) return 0;
-    const expiry = new Date(currentSubscription.expiry);
+    if (!currentSubscription?.expiryDate) return 0;
+    const expiry = new Date(currentSubscription.expiryDate);
     const today = new Date();
     const diffTime = expiry - today;
     return Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
@@ -319,12 +320,12 @@ const SubscriptionManagement = () => {
         {/* Subscription Status Alert */}
         {currentSubscription && (
           <div className="mb-8">
-            {currentSubscription.status === 'active' ? (
+            {currentSubscription.status.toLowerCase() === 'active' ? (
               getDaysUntilExpiry() <= 7 ? (
                 <AlertCard
                   type="warning"
                   title="Subscription Expiring Soon"
-                  message={`Your subscription expires in ${getDaysUntilExpiry()} days on ${formatDate(currentSubscription.expiry)}.`}
+                  message={`Your subscription expires in ${getDaysUntilExpiry()} days on ${formatDate(currentSubscription.expiryDate)}.`}
                 >
                   <div className="mt-4">
                     <Button size="sm" onClick={() => setActiveTab('plans')}>
@@ -336,7 +337,7 @@ const SubscriptionManagement = () => {
                 <AlertCard
                   type="success"
                   title="Subscription Active"
-                  message={`Your ${currentSubscription.plan} plan is active until ${formatDate(currentSubscription.expiry)}.`}
+                  message={`Your ${currentSubscription.planType} plan is active until ${formatDate(currentSubscription.expiryDate)}.`}
                 />
               )
             ) : currentSubscription.status === 'expired' ? (
@@ -395,9 +396,9 @@ const SubscriptionManagement = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <StatsCard
                     title="Current Plan"
-                    value={currentSubscription?.plan || 'None'}
-                    icon={getPlanIcon(currentSubscription?.plan)}
-                    className={`bg-gradient-to-br ${getPlanColor(currentSubscription?.plan)}`}
+                    value={currentSubscription?.planType || 'None'}
+                    icon={getPlanIcon(currentSubscription?.planType)}
+                    className={`bg-gradient-to-br ${getPlanColor(currentSubscription?.planType)}`}
                   />
                   
                   <StatsCard
@@ -423,8 +424,8 @@ const SubscriptionManagement = () => {
                         <div className="flex justify-between items-center">
                           <span className="text-gray-600">Plan</span>
                           <div className="flex items-center space-x-2">
-                            {getPlanIcon(currentSubscription.plan)}
-                            <span className="font-medium">{currentSubscription.plan}</span>
+                            {getPlanIcon(currentSubscription.planType)}
+                            <span className="font-medium">{currentSubscription.planType}</span>
                           </div>
                         </div>
 
@@ -435,18 +436,18 @@ const SubscriptionManagement = () => {
 
                         <div className="flex justify-between items-center">
                           <span className="text-gray-600">Started</span>
-                          <span className="font-medium">{formatDate(currentSubscription.startDate)}</span>
+                          <span className="font-medium">{formatDate(currentSubscription.createdAt)}</span>
                         </div>
 
                         <div className="flex justify-between items-center">
                           <span className="text-gray-600">Expires</span>
-                          <span className="font-medium">{formatDate(currentSubscription.expiry)}</span>
+                          <span className="font-medium">{formatDate(currentSubscription.expiryDate)}</span>
                         </div>
 
-                        <div className="flex justify-between items-center">
+                        {/* <div className="flex justify-between items-center">
                           <span className="text-gray-600">Billing Cycle</span>
                           <span className="font-medium capitalize">{currentSubscription.billingCycle}</span>
-                        </div>
+                        </div> */}
 
                         <div className="flex justify-between items-center">
                           <span className="text-gray-600">Amount</span>
