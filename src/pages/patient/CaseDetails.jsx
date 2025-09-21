@@ -23,7 +23,8 @@ import {
   Eye,
   Plus,
   Trash2,
-  Save
+  Save,
+  DeleteIcon
 } from 'lucide-react';
 
 import Card, { StatsCard, AlertCard } from '../../components/common/Card';
@@ -45,6 +46,33 @@ const CaseDetails = () => {
   const [newNote, setNewNote] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [editedCase, setEditedCase] = useState({});
+
+  //Regarding Files:
+  // const [uploadedFiles, setUploadedFiles] = useState([]);
+  // const [uploadProgress, setUploadProgress] = useState({});
+  // const [fileErrors, setFileErrors] = useState([]);
+  // const [isUploading, setIsUploading] = useState(false);
+  // const [isDragActive, setIsDragActive] = useState(false);
+
+  const [selectedFiles, setSelectedFiles] = useState([]); // Files selected for preview
+  const [uploadProgress, setUploadProgress] = useState({});
+  const [fileErrors, setFileErrors] = useState([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDragActive, setIsDragActive] = useState(false);
+
+
+  // File upload configuration (from CreateCase.jsx)
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+  const MAX_FILES = 10; // Updated to 10 files per case
+  const ALLOWED_FILE_TYPES = {
+    'application/pdf': ['.pdf'],
+    'image/jpeg': ['.jpg', '.jpeg'],
+    'image/png': ['.png'],
+    'image/gif': ['.gif'],
+    'image/bmp': ['.bmp'],
+    'image/webp': ['.webp']
+  };
 
   useEffect(() => {
     console.log('Strt Loading Data ...');
@@ -119,6 +147,326 @@ const CaseDetails = () => {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+    // Add these new state variables for file upload functionality
+  // const [selectedFiles, setSelectedFiles] = useState([]); // Files selected for preview
+  // const [uploadProgress, setUploadProgress] = useState({});
+  // const [fileErrors, setFileErrors] = useState([]);
+  // const [isUploading, setIsUploading] = useState(false);
+  // const [isSubmitting, setIsSubmitting] = useState(false);
+  // const [isDragActive, setIsDragActive] = useState(false);
+
+  // File upload configuration (from CreateCase.jsx)
+  // const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+  // const MAX_FILES = 10; // Updated to 10 files per case
+  // const ALLOWED_FILE_TYPES = {
+  //   'application/pdf': ['.pdf'],
+  //   'image/jpeg': ['.jpg', '.jpeg'],
+  //   'image/png': ['.png'],
+  //   'image/gif': ['.gif'],
+  //   'image/bmp': ['.bmp'],
+  //   'image/webp': ['.webp']
+  // };
+
+  // ... existing useEffect and other functions (keep as is)
+
+  // // File validation function (from CreateCase.jsx)
+  // const validateFile = (file) => {
+  //   const errors = [];
+    
+  //   // Check file size
+  //   if (file.size > MAX_FILE_SIZE) {
+  //     errors.push(`File size exceeds 10MB limit (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
+  //   }
+    
+  //   // Check file type
+  //   const isValidType = Object.keys(ALLOWED_FILE_TYPES).includes(file.type) ||
+  //     Object.values(ALLOWED_FILE_TYPES).flat().some(ext => 
+  //       file.name.toLowerCase().endsWith(ext)
+  //     );
+    
+  //   if (!isValidType) {
+  //     errors.push('Only PDF and image files (JPG, PNG, GIF, BMP, WebP) are allowed');
+  //   }
+    
+  //   return errors;
+  // };
+
+  // // Handle file selection (Step 1 - Preview)
+  // const handleFileSelection = (files) => {
+  //   const fileList = Array.from(files);
+    
+  //   // Check total file count including existing documents
+  //   const currentDocCount = caseData.documents?.length || 0;
+  //   const totalFiles = currentDocCount + selectedFiles.length + fileList.length;
+    
+  //   if (totalFiles > MAX_FILES) {
+  //     setFileErrors([`Maximum ${MAX_FILES} files allowed per case. Current: ${currentDocCount}, Selected: ${selectedFiles.length}`]);
+  //     return;
+  //   }
+
+  //   setFileErrors([]);
+  //   const validFiles = [];
+    
+  //   // Validate files
+  //   for (const file of fileList) {
+  //     const errors = validateFile(file);
+      
+  //     if (errors.length > 0) {
+  //       setFileErrors(prev => [...prev, `${file.name}: ${errors.join(', ')}`]);
+  //       continue;
+  //     }
+      
+  //     // Create file object with preview URL
+  //     const fileWithPreview = {
+  //       id: Date.now() + Math.random(),
+  //       file,
+  //       name: file.name,
+  //       size: file.size,
+  //       type: file.type,
+  //       previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : null
+  //     };
+      
+  //     validFiles.push(fileWithPreview);
+  //   }
+
+  //   if (validFiles.length > 0) {
+  //     setSelectedFiles(prev => [...prev, ...validFiles]);
+  //   }
+  // };
+
+  // // Remove selected file from preview
+  // const removeSelectedFile = (fileId) => {
+  //   setSelectedFiles(prev => {
+  //     const updatedFiles = prev.filter(f => f.id !== fileId);
+  //     // Clean up preview URLs
+  //     const fileToRemove = prev.find(f => f.id === fileId);
+  //     if (fileToRemove?.previewUrl) {
+  //       URL.revokeObjectURL(fileToRemove.previewUrl);
+  //     }
+  //     return updatedFiles;
+  //   });
+  // };
+
+  // // Submit selected files to backend (Step 2 - Upload)
+  // const handleSubmitFiles = async () => {
+  //   if (selectedFiles.length === 0) {
+  //     setFileErrors(['No files selected to upload']);
+  //     return;
+  //   }
+
+  //   setIsSubmitting(true);
+  //   setFileErrors([]);
+
+  //   try {
+  //     // Extract actual File objects
+  //     const filesToUpload = selectedFiles.map(f => f.file);
+      
+  //     // Upload files using existing uploadCaseDocuments method
+  //     const uploadResult = await execute(() => 
+  //       patientService.uploadCaseDocuments(caseId, filesToUpload, (progressEvent) => {
+  //         const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+  //         setUploadProgress(prev => ({ ...prev, current: progress }));
+  //       })
+  //     );
+
+  //     // Extract document IDs from upload result
+  //     const newDocumentIds = uploadResult.documents?.map(doc => doc.id) || [];
+      
+  //     if (newDocumentIds.length > 0) {
+  //       // Update case attachments using the new endpoint
+  //       await execute(() => patientService.updateCaseAttachments(caseId, newDocumentIds));
+        
+  //       // Reload case details to show updated documents
+  //       await loadCaseDetails();
+        
+  //       // Clean up preview URLs
+  //       selectedFiles.forEach(file => {
+  //         if (file.previewUrl) {
+  //           URL.revokeObjectURL(file.previewUrl);
+  //         }
+  //       });
+        
+  //       // Reset state
+  //       setSelectedFiles([]);
+  //       setUploadProgress({});
+  //       alert(`Successfully uploaded ${newDocumentIds.length} file(s) to the case.`);
+  //     }
+      
+  //   } catch (error) {
+  //     console.error('Failed to upload documents:', error);
+  //     setFileErrors(prev => [...prev, 'Failed to upload files. Please try again.']);
+  //   } finally {
+  //     setIsSubmitting(false);
+  //   }
+  // };
+
+  // // Handle file drop
+  // const handleDrop = (e) => {
+  //   e.preventDefault();
+  //   setIsDragActive(false);
+  //   handleFileSelection(e.dataTransfer.files);
+  // };
+
+  // // Handle drag events
+  // const handleDragOver = (e) => {
+  //   e.preventDefault();
+  //   setIsDragActive(true);
+  // };
+
+  // const handleDragLeave = () => {
+  //   setIsDragActive(false);
+  // };
+
+  // ... existing useEffect and other functions (keep as is)
+
+  // File validation function (from CreateCase.jsx)
+  const validateFile = (file) => {
+    const errors = [];
+    
+    // Check file size
+    if (file.size > MAX_FILE_SIZE) {
+      errors.push(`File size exceeds 10MB limit (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
+    }
+    
+    // Check file type
+    const isValidType = Object.keys(ALLOWED_FILE_TYPES).includes(file.type) ||
+      Object.values(ALLOWED_FILE_TYPES).flat().some(ext => 
+        file.name.toLowerCase().endsWith(ext)
+      );
+    
+    if (!isValidType) {
+      errors.push('Only PDF and image files (JPG, PNG, GIF, BMP, WebP) are allowed');
+    }
+    
+    return errors;
+  };
+
+  // Handle file selection (Step 1 - Preview)
+  const handleFileSelection = (files) => {
+    const fileList = Array.from(files);
+    
+    // Check total file count including existing documents
+    const currentDocCount = caseData.documents?.length || 0;
+    const totalFiles = currentDocCount + selectedFiles.length + fileList.length;
+    
+    if (totalFiles > MAX_FILES) {
+      setFileErrors([`Maximum ${MAX_FILES} files allowed per case. Current: ${currentDocCount}, Selected: ${selectedFiles.length}`]);
+      return;
+    }
+
+    setFileErrors([]);
+    const validFiles = [];
+    
+    // Validate files
+    for (const file of fileList) {
+      const errors = validateFile(file);
+      
+      if (errors.length > 0) {
+        setFileErrors(prev => [...prev, `${file.name}: ${errors.join(', ')}`]);
+        continue;
+      }
+      
+      // Create file object with preview URL
+      const fileWithPreview = {
+        id: Date.now() + Math.random(),
+        file,
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : null
+      };
+      
+      validFiles.push(fileWithPreview);
+    }
+
+    if (validFiles.length > 0) {
+      setSelectedFiles(prev => [...prev, ...validFiles]);
+    }
+  };
+
+  // Remove selected file from preview
+  const removeSelectedFile = (fileId) => {
+    setSelectedFiles(prev => {
+      const updatedFiles = prev.filter(f => f.id !== fileId);
+      // Clean up preview URLs
+      const fileToRemove = prev.find(f => f.id === fileId);
+      if (fileToRemove?.previewUrl) {
+        URL.revokeObjectURL(fileToRemove.previewUrl);
+      }
+      return updatedFiles;
+    });
+  };
+
+  // Submit selected files to backend (Step 2 - Upload)
+  const handleSubmitFiles = async () => {
+    if (selectedFiles.length === 0) {
+      setFileErrors(['No files selected to upload']);
+      return;
+    }
+
+    setIsSubmitting(true);
+    setFileErrors([]);
+
+    try {
+      // Extract actual File objects
+      const filesToUpload = selectedFiles.map(f => f.file);
+      
+      // Upload files using existing uploadCaseDocuments method
+      const uploadResult = await execute(() => 
+        patientService.uploadCaseDocuments(caseId, filesToUpload, (progressEvent) => {
+          const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          setUploadProgress(prev => ({ ...prev, current: progress }));
+        })
+      );
+
+      // Extract document IDs from upload result
+      const newDocumentIds = uploadResult.documents?.map(doc => doc.id) || [];
+      
+      if (newDocumentIds.length > 0) {
+        // Update case attachments using the new endpoint
+        await execute(() => patientService.updateCaseAttachments(caseId, newDocumentIds));
+        
+        // Reload case details to show updated documents
+        await loadCaseDetails();
+        
+        // Clean up preview URLs
+        selectedFiles.forEach(file => {
+          if (file.previewUrl) {
+            URL.revokeObjectURL(file.previewUrl);
+          }
+        });
+        
+        // Reset state
+        setSelectedFiles([]);
+        setUploadProgress({});
+        alert(`Successfully uploaded ${newDocumentIds.length} file(s) to the case.`);
+      }
+      
+    } catch (error) {
+      console.error('Failed to upload documents:', error);
+      setFileErrors(prev => [...prev, 'Failed to upload files. Please try again.']);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Handle file drop
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragActive(false);
+    handleFileSelection(e.dataTransfer.files);
+  };
+
+  // Handle drag events
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragActive(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragActive(false);
   };
 
   const tabs = [
@@ -249,7 +597,8 @@ const CaseDetails = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    // <div className="min-h-screen bg-gray-50">
+    <div className="max-w-6xl mx-auto p-6 space-y-8">
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -451,16 +800,180 @@ const CaseDetails = () => {
                   <div className="space-y-4">
                     <div className="flex justify-between items-center">
                       <h3 className="text-lg font-medium text-gray-900">Documents</h3>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        icon={<Upload className="w-4 h-4" />}
-                      >
-                        Upload Document
-                      </Button>
+                      
+                      {/* Select Files Button (Step 1) */}
+                      <div className="flex items-center space-x-2">
+                        <div className="relative">
+                          <input
+                            type="file"
+                            multiple
+                            accept=".pdf,.jpg,.jpeg,.png,.gif,.bmp,.webp"
+                            onChange={(e) => handleFileSelection(e.target.files)}
+                            className="hidden"
+                            id="case-document-upload"
+                            disabled={isSubmitting}
+                          />
+                          <label
+                            htmlFor="case-document-upload"
+                            className={`inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md cursor-pointer transition-colors ${
+                              isSubmitting 
+                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                                : 'bg-white text-gray-700 hover:bg-gray-50'
+                            }`}
+                          >
+                            <Upload className="w-4 h-4 mr-2" />
+                            Select Files
+                          </label>
+                        </div>
+                        
+                        {/* Submit Files Button (Step 2) */}
+                        {selectedFiles.length > 0 && (
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            icon={isSubmitting ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <Save className="w-4 h-4" />}
+                            onClick={handleSubmitFiles}
+                            disabled={isSubmitting}
+                          >
+                            {isSubmitting ? 'Uploading...' : `Upload ${selectedFiles.length} File${selectedFiles.length > 1 ? 's' : ''}`}
+                          </Button>
+                        )}
+                      </div>
                     </div>
 
+                    {/* Drag and Drop Area */}
+                    <div
+                      className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                        isDragActive 
+                          ? 'border-primary-400 bg-primary-50' 
+                          : 'border-gray-300 hover:border-gray-400'
+                      } ${isSubmitting ? 'opacity-50' : ''}`}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                    >
+                      <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-sm text-gray-600 mb-2">
+                        Drag and drop files here or click "Select Files" above
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        PDF and image files only, max 10MB per file, {MAX_FILES} files max per case
+                      </p>
+                    </div>
+
+                    {/* Selected Files Preview (Step 1 - Before Upload) */}
+                    {selectedFiles.length > 0 && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="text-sm font-medium text-blue-900">
+                            Selected Files ({selectedFiles.length}/{MAX_FILES - (caseData.documents?.length || 0)} available)
+                          </h4>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              // Clean up preview URLs
+                              selectedFiles.forEach(file => {
+                                if (file.previewUrl) {
+                                  URL.revokeObjectURL(file.previewUrl);
+                                }
+                              });
+                              setSelectedFiles([]);
+                            }}
+                            className="text-blue-700 hover:text-blue-900"
+                          >
+                            Clear All
+                          </Button>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          {selectedFiles.map((file) => (
+                            <div key={file.id} className="flex items-center justify-between p-3 bg-white rounded border">
+                              <div className="flex items-center space-x-3">
+                                {file.previewUrl ? (
+                                  <img 
+                                    src={file.previewUrl} 
+                                    alt={file.name}
+                                    className="w-10 h-10 object-cover rounded border"
+                                  />
+                                ) : (
+                                  <FileText className="w-10 h-10 text-gray-400 p-2 bg-gray-100 rounded" />
+                                )}
+                                <div>
+                                  <p className="text-sm font-medium text-gray-900">{file.name}</p>
+                                  <p className="text-xs text-gray-600">
+                                    {(file.size / 1024 / 1024).toFixed(2)} MB • {file.type}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                {file.previewUrl && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    icon={<Eye className="w-4 h-4" />}
+                                    onClick={() => window.open(file.previewUrl, '_blank')}
+                                    className="text-gray-600 hover:text-gray-800"
+                                  >
+                                    Preview
+                                  </Button>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  icon={<DeleteIcon className="w-4 h-4" />}
+                                  onClick={() => removeSelectedFile(file.id)}
+                                  className="text-red-600 hover:text-red-800"
+                                >
+                                  Remove
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Upload Progress (Step 2 - During Upload) */}
+                    {isSubmitting && (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <div className="flex items-center mb-2">
+                          <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin mr-2"></div>
+                          <span className="text-sm font-medium text-green-900">Uploading documents to case...</span>
+                        </div>
+                        {uploadProgress.current && (
+                          <div className="w-full bg-green-200 rounded-full h-2">
+                            <div
+                              className="bg-green-600 h-2 rounded-full transition-all"
+                              style={{ width: `${uploadProgress.current}%` }}
+                            ></div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* File Upload Errors */}
+                    {fileErrors.length > 0 && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                        <div className="flex items-start">
+                          <AlertTriangle className="w-5 h-5 text-red-400 mt-0.5 mr-2" />
+                          <div>
+                            <h4 className="text-sm font-medium text-red-800">Upload Errors:</h4>
+                            <ul className="text-sm text-red-700 mt-1 space-y-1">
+                              {fileErrors.map((error, index) => (
+                                <li key={index}>• {error}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Existing Documents List */}
                     <div className="space-y-3">
+                      <h4 className="text-md font-medium text-gray-900">
+                        Case Documents ({caseData.documents?.length || 0})
+                      </h4>
                       {caseData.documents?.length > 0 ? (
                         caseData.documents.map((doc, index) => (
                           <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
@@ -470,6 +983,11 @@ const CaseDetails = () => {
                                 <p className="font-medium text-gray-900">{doc.name}</p>
                                 <p className="text-sm text-gray-600">
                                   Uploaded on {formatDate(doc.uploadedAt)}
+                                  {doc.fileSize && (
+                                    <span className="ml-2">
+                                      ({(doc.fileSize / 1024 / 1024).toFixed(2)} MB)
+                                    </span>
+                                  )}
                                 </p>
                               </div>
                             </div>
@@ -478,6 +996,10 @@ const CaseDetails = () => {
                                 variant="ghost"
                                 size="sm"
                                 icon={<Download className="w-4 h-4" />}
+                                onClick={() => {
+                                  // Use existing download functionality
+                                  patientService.downloadCaseDocument(caseId, doc.id, doc.name);
+                                }}
                               >
                                 Download
                               </Button>
@@ -485,6 +1007,17 @@ const CaseDetails = () => {
                                 variant="ghost"
                                 size="sm"
                                 icon={<Trash2 className="w-4 h-4" />}
+                                onClick={async () => {
+                                  if (window.confirm('Are you sure you want to delete this document?')) {
+                                    try {
+                                      await execute(() => patientService.deleteCaseDocument(caseId, doc.id));
+                                      await loadCaseDetails(); // Reload to update the list
+                                    } catch (error) {
+                                      console.error('Failed to delete document:', error);
+                                      alert('Failed to delete document. Please try again.');
+                                    }
+                                  }
+                                }}
                               >
                                 Delete
                               </Button>
@@ -495,6 +1028,9 @@ const CaseDetails = () => {
                         <div className="text-center py-8">
                           <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                           <p className="text-gray-600">No documents uploaded yet</p>
+                          <p className="text-sm text-gray-500 mt-1">
+                            Upload medical records, test results, or other relevant documents
+                          </p>
                         </div>
                       )}
                     </div>

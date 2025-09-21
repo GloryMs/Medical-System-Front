@@ -34,6 +34,10 @@ const patientService = {
     return await api.put(`/patient-service/api/patients/cases/${caseId}`, caseData);
   },
 
+  updateCaseAttachments: async (caseId, documentIds) => {
+    return await api.put(`/patient-service/api/patients/cases/${caseId}/attachments`, {documentIds });
+  },
+
   deleteCase: async (caseId) => {
     return await api.delete(`/patient-service/api/patients/cases/${caseId}`);
   },
