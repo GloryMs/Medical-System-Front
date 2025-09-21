@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
-import { Eye, EyeOff, Mail, Lock, User, Stethoscope } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, Stethoscope, Phone } from 'lucide-react';
 import Button from '../../components/common/Button';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -11,6 +11,7 @@ const registerSchema = yup.object({
   firstName: yup.string().required('First name is required'),
   lastName: yup.string().required('Last name is required'),
   email: yup.string().email('Invalid email').required('Email is required'),
+  phoneNumber: yup.string().nullable(), // Optional phone number
   password: yup.string().min(8, 'Password must be at least 8 characters').required('Password is required'),
   confirmPassword: yup.string()
     .oneOf([yup.ref('password')], 'Passwords must match')
@@ -22,7 +23,7 @@ const registerSchema = yup.object({
 const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
+  const navigate = useNavigate();
   const { register: registerUser, isLoading } = useAuth();
 
   const {
@@ -36,8 +37,17 @@ const Register = () => {
 
   const onSubmit = async (data) => {
     try {
-      await registerUser(data);
-      // Redirect to email verification page or login
+      // Transform data to match backend expectations
+      const postData = {
+        email: data.email,
+        password: data.password,
+        role: data.role,
+        fullName: `${data.firstName} ${data.lastName}`, // Merge first and last name
+        phoneNumber: data.phoneNumber || null // Include phone number or null if empty
+      };
+      
+      await registerUser(postData);
+      navigate('/login');
     } catch (error) {
       setError('root', { message: error.message });
     }
@@ -111,6 +121,24 @@ const Register = () => {
               />
             </div>
             {errors.email && <p className="text-sm text-red-600 mt-1">{errors.email.message}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Phone Number <span className="text-gray-400 text-sm">(Optional)</span>
+            </label>
+            <div className="relative">
+              <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                {...register('phoneNumber')}
+                type="tel"
+                className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 ${
+                  errors.phoneNumber ? 'border-red-300' : 'border-gray-300'
+                }`}
+                placeholder="Enter your phone number"
+              />
+            </div>
+            {errors.phoneNumber && <p className="text-sm text-red-600 mt-1">{errors.phoneNumber.message}</p>}
           </div>
 
           <div>

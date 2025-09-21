@@ -82,7 +82,7 @@ const PatientNotifications = () => {
 
   const loadNotifications = async () => {
     try {
-      const data = await execute(() => patientService.getNotifications());
+      const data = await execute(() => patientService.getNotifications(user.id));
       setNotifications(data || []);
 
       // Calculate stats from the notifications data

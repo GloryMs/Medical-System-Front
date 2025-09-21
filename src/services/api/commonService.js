@@ -135,7 +135,7 @@ const commonService = {
 
   // Get all countries
   getAllCountries: async () => {
-    return await api.get('/config-service/api/configuration/countries');
+    return await api.get('/config-service/api/configuration/COUNTRY');
   },
 
   // Get states/provinces by country

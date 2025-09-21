@@ -734,7 +734,7 @@ const SubscriptionManagement = () => {
                               className="w-full"
                               onClick={() => {
                                 setSelectedPlan(plan);
-                                if (currentSubscription?.status === 'active') {
+                                if (currentSubscription?.status.toLowerCase() === 'active') {
                                   setShowUpgradeModal(true);
                                 } else {
                                   subscriptionForm.setValue('planType', plan.code);

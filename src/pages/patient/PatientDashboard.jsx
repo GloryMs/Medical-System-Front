@@ -32,9 +32,9 @@ const PatientDashboard = () => {
   
   const [dashboardData, setDashboardData] = useState({
     stats: {
-      totalCases: 3,
-      activeCases: 2,
-      completedCases: 1,
+      totalCases: 0,
+      activeCases: 0,
+      completedCases: 0,
       upcomingAppointments: 0
     },
     recentCases: [],
@@ -51,7 +51,7 @@ const PatientDashboard = () => {
 
   const loadDashboardData = async () => {
     try {
-      const data = await execute(() => patientService.getDashboardData());
+      const data = await execute(() => patientService.getDashboardData(user.id));
       setDashboardData(data);
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
@@ -107,7 +107,7 @@ const PatientDashboard = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">
-              {getWelcomeMessage()}, {user?.firstName}!
+              {getWelcomeMessage()}, {user?.fullName}!
             </h1>
             <p className="text-primary-100 mt-1">
               Here's an overview of your medical consultations
