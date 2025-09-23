@@ -111,10 +111,9 @@ const CreateCase = () => {
 
   // File upload states
   const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [uploadProgress, setUploadProgress] = useState({});
   const [fileErrors, setFileErrors] = useState([]);
   const [isDragActive, setIsDragActive] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
 
   // Form setup with enhanced defaults
   const {
@@ -141,7 +140,8 @@ const CreateCase = () => {
       complexity: 'MODERATE',
       requiresSecondOpinion: true,
       minDoctorsRequired: 2,
-      maxDoctorsAllowed: 3
+      maxDoctorsAllowed: 3,
+      documentIds: []
     }
   });
 
@@ -187,13 +187,15 @@ const CreateCase = () => {
         specializations,
         subspecializations
       ] = await Promise.all([
+        // execute(() => commonService.getAllDiseases()),
+        // execute(() => commonService.getAllSymptoms()),
+        // execute(() => commonService.getAllMedications()),
         execute(() => commonService.getMedicalConfigurations('diseases')),
         execute(() => commonService.getMedicalConfigurations('symptoms')),
         execute(() => commonService.getMedicalConfigurations('medications')),
         execute(() => commonService.getMedicalConfigurations('SPECIALIZATION')),
         execute(() => commonService.getMedicalConfigurations('SUBSPECIALIZATION'))
       ]);
-      
       // Set medical configurations
       setMedicalConfigs({
         diseases: diseases || [],
@@ -202,7 +204,6 @@ const CreateCase = () => {
         specializations: specializations || [],
         subspecializations: subspecializations || []
       });
-      
       // Extract unique categories for diseases
       const uniqueDiseaseCategories = [...new Set(
         (diseases || []).map(disease => disease.category).filter(Boolean)
@@ -294,7 +295,7 @@ const CreateCase = () => {
     return errors;
   };
 
-  const handleFileUpload = (files) => {
+  const handleFileUpload = async (files) => {
     const fileList = Array.from(files);
     
     // Check total file count
@@ -304,7 +305,6 @@ const CreateCase = () => {
     }
 
     setFileErrors([]);
-    const newFiles = [];
     
     for (const file of fileList) {
       const fileId = Date.now() + Math.random();
@@ -322,56 +322,55 @@ const CreateCase = () => {
         name: file.name,
         size: file.size,
         type: file.type,
-        status: 'ready' // Files are ready for submission
+        status: 'uploading',
+        progress: 0
       };
 
-      newFiles.push(newFile);
-    }
+      setUploadedFiles(prev => [...prev, newFile]);
+      setUploadProgress(prev => ({ ...prev, [fileId]: 0 }));
 
-    setUploadedFiles(prev => [...prev, ...newFiles]);
+      try {
+        // Simulate upload progress
+        for (let progress = 0; progress <= 100; progress += 10) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          setUploadProgress(prev => ({ ...prev, [fileId]: progress }));
+        }
+
+        // Update file status
+        setUploadedFiles(prev => prev.map(f => 
+          f.id === fileId ? { ...f, status: 'completed' } : f
+        ));
+
+      } catch (error) {
+        console.error('Upload failed:', error);
+        setUploadedFiles(prev => prev.map(f => 
+          f.id === fileId ? { ...f, status: 'failed' } : f
+        ));
+        setFileErrors(prev => [...prev, `Failed to upload ${file.name}`]);
+      }
+    }
   };
 
   const removeFile = (fileId) => {
     setUploadedFiles(prev => prev.filter(f => f.id !== fileId));
-  };
-
-  const previewFile = (file) => {
-    // Create object URL for preview
-    const url = URL.createObjectURL(file.file);
-    window.open(url, '_blank');
+    setUploadProgress(prev => {
+      const newProgress = { ...prev };
+      delete newProgress[fileId];
+      return newProgress;
+    });
   };
 
   const onSubmit = async (data) => {
-    setIsSubmitting(true);
-    setUploadProgress(0);
-    
     try {
-      // Prepare case data for submission
       const caseData = {
-        caseTitle: data.caseTitle,
-        description: data.description,
-        primaryDiseaseCode: data.primaryDiseaseCode,
-        secondaryDiseaseCodes: data.secondaryDiseaseCodes || [],
-        symptomCodes: data.symptomCodes || [],
-        currentMedicationCodes: data.currentMedicationCodes || [],
-        requiredSpecialization: data.requiredSpecialization,
-        secondarySpecializations: data.secondarySpecializations || [],
-        urgencyLevel: data.urgencyLevel,
-        complexity: data.complexity,
-        requiresSecondOpinion: data.requiresSecondOpinion,
-        minDoctorsRequired: data.minDoctorsRequired,
-        maxDoctorsAllowed: data.maxDoctorsAllowed,
-        // Add files directly to the case data
-        files: uploadedFiles.map(f => f.file)
+        ...data,
+        patientId: user.id,
+        documentIds: uploadedFiles
+          .filter(f => f.status === 'completed')
+          .map(f => f.id)
       };
 
-      // Create case with files using multipart form data
-      const newCase = await execute(() => 
-        patientService.createCase(caseData, (progressEvent) => {
-          const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          setUploadProgress(progress);
-        })
-      );
+      const newCase = await execute(() => patientService.createCase(caseData));
       
       // Show success message and redirect
       alert('Case created successfully! You will be redirected to your cases.');
@@ -380,9 +379,6 @@ const CreateCase = () => {
     } catch (error) {
       console.error('Failed to create case:', error);
       alert('Failed to create case. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-      setUploadProgress(0);
     }
   };
 
@@ -803,7 +799,7 @@ const CreateCase = () => {
           </div>
         </Card>
 
-        {/* File Upload Section */}
+        {/* File Upload */}
         <Card title="Supporting Documents" className="space-y-6">
           <div className="text-sm text-gray-600 mb-4">
             Upload relevant medical documents, test results, or images (PDF, JPG, PNG, GIF, BMP, WebP - Max 10MB each, 5 files total)
@@ -868,39 +864,50 @@ const CreateCase = () => {
             </div>
           )}
 
-          {/* Selected Files List */}
+          {/* Uploaded Files List */}
           {uploadedFiles.length > 0 && (
             <div className="space-y-3">
-              <h4 className="font-medium text-gray-900">Selected Files ({uploadedFiles.length}/{MAX_FILES})</h4>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <p className="text-sm text-blue-800">
-                  <Check className="w-4 h-4 inline mr-1" />
-                  Files are ready for upload. They will be uploaded when you submit the case.
-                </p>
-              </div>
+              <h4 className="font-medium text-gray-900">Uploaded Files ({uploadedFiles.length}/{MAX_FILES})</h4>
               {uploadedFiles.map((file) => (
-                <div key={file.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                <div key={file.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <div className="flex items-center flex-1">
                     <FileText className="w-5 h-5 text-gray-400 mr-3" />
                     <div className="flex-1">
                       <p className="text-sm font-medium text-gray-900">{file.name}</p>
                       <p className="text-xs text-gray-600">
-                        {(file.size / 1024 / 1024).toFixed(2)} MB • {file.type}
+                        {(file.size / 1024 / 1024).toFixed(2)} MB
                       </p>
+                      {file.status === 'uploading' && (
+                        <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                          <div
+                            className="bg-primary-600 h-2 rounded-full transition-all"
+                            style={{ width: `${uploadProgress[file.id] || 0}%` }}
+                          ></div>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                      Ready
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => previewFile(file)}
-                      className="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50"
-                      title="Preview file"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
+                    {file.status === 'completed' && (
+                      <Check className="w-5 h-5 text-green-500" />
+                    )}
+                    {file.status === 'failed' && (
+                      <X className="w-5 h-5 text-red-500" />
+                    )}
+                    {file.status === 'completed' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          // Create object URL for preview
+                          const url = URL.createObjectURL(file.file);
+                          window.open(url, '_blank');
+                        }}
+                        className="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50"
+                        title="Preview file"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => removeFile(file.id)}
@@ -915,27 +922,6 @@ const CreateCase = () => {
             </div>
           )}
         </Card>
-
-        {/* Upload Progress Bar (shown during submission) */}
-        {isSubmitting && (
-          <Card title="Uploading Case..." className="space-y-4">
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm text-gray-600">
-                <span>Progress</span>
-                <span>{uploadProgress}%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-primary-600 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${uploadProgress}%` }}
-                ></div>
-              </div>
-              <p className="text-xs text-gray-500 text-center">
-                Please wait while we upload your files and create your case...
-              </p>
-            </div>
-          </Card>
-        )}
 
         {/* Case Summary */}
         <Card title="Case Summary" className="space-y-4">
@@ -952,7 +938,6 @@ const CreateCase = () => {
                   }</li>
                   <li>• Symptoms: {selectedSymptoms.length} selected</li>
                   <li>• Current Medications: {selectedMedications.length} selected</li>
-                  <li>• Attached Files: {uploadedFiles.length} files ready</li>
                 </ul>
               </div>
               <div>
@@ -1020,19 +1005,18 @@ const CreateCase = () => {
             variant="outline"
             onClick={() => navigate('/app/patient/cases')}
             className="px-8 py-3"
-            disabled={isSubmitting}
           >
             Cancel
           </Button>
           <Button
             type="submit"
             variant="primary"
-            loading={isSubmitting}
-            disabled={Object.keys(errors).length > 0 || isSubmitting}
+            loading={loading}
+            disabled={Object.keys(errors).length > 0}
             className="px-8 py-3"
             icon={<Plus className="w-4 h-4" />}
           >
-            {isSubmitting ? 'Creating Case...' : 'Create Case'}
+            Create Case
           </Button>
         </div>
       </form>

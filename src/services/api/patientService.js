@@ -26,9 +26,227 @@ const patientService = {
     return await api.get(`/patient-service/api/patients/cases/${caseId}`);
   },
 
-  createCase: async (caseData) => {
-    return await api.post('/patient-service/api/patients/cases', caseData);
+    /**
+   * Updated createCase method to support file uploads with multipart/form-data
+   */
+  // Updated createCase method to handle multipart form data with files
+  createCase: async (caseData, onUploadProgress) => {
+    const formData = new FormData();
+    
+    // Add basic case information
+    formData.append('caseTitle', caseData.caseTitle || '');
+    formData.append('description', caseData.description || '');
+    
+    // Add disease and medical information
+    if (caseData.primaryDiseaseCode) {
+      formData.append('primaryDiseaseCode', caseData.primaryDiseaseCode);
+    }
+    
+    // Handle arrays - backend expects List<String>
+    if (caseData.secondaryDiseaseCodes && Array.isArray(caseData.secondaryDiseaseCodes)) {
+      caseData.secondaryDiseaseCodes.forEach(code => {
+        formData.append('secondaryDiseaseCodes', code);
+      });
+    }
+    
+    if (caseData.symptomCodes && Array.isArray(caseData.symptomCodes)) {
+      caseData.symptomCodes.forEach(code => {
+        formData.append('symptomCodes', code);
+      });
+    }
+    
+    if (caseData.currentMedicationCodes && Array.isArray(caseData.currentMedicationCodes)) {
+      caseData.currentMedicationCodes.forEach(code => {
+        formData.append('currentMedicationCodes', code);
+      });
+    }
+    
+    // Add specialization information
+    if (caseData.requiredSpecialization) {
+      formData.append('requiredSpecialization', caseData.requiredSpecialization);
+    }
+    
+    if (caseData.secondarySpecializations && Array.isArray(caseData.secondarySpecializations)) {
+      caseData.secondarySpecializations.forEach(code => {
+        formData.append('secondarySpecializations', code);
+      });
+    }
+    
+    // Add case settings
+    formData.append('urgencyLevel', caseData.urgencyLevel || 'MEDIUM');
+    formData.append('complexity', caseData.complexity || 'MODERATE');
+    formData.append('requiresSecondOpinion', caseData.requiresSecondOpinion || false);
+    formData.append('minDoctorsRequired', caseData.minDoctorsRequired || 1);
+    formData.append('maxDoctorsAllowed', caseData.maxDoctorsAllowed || 2);
+    
+    // Add files if any
+    if (caseData.files && Array.isArray(caseData.files)) {
+      caseData.files.forEach(file => {
+        formData.append('files', file);
+      });
+    }
+    
+    return await api.upload('/patient-service/api/patients/cases', formData, onUploadProgress);
   },
+
+
+  // Replace the viewCaseDocument method in your patientService.js with this more robust version:
+
+// Replace your document methods in patientService.js with these corrected versions:
+
+  viewCaseDocument: async (caseId, documentId) => {
+    try {
+      console.log('Making request to view document:', documentId);
+      
+      // Make request with proper headers for raw binary data
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const token = localStorage.getItem('accessToken');
+      
+      if (!user.id || !token) {
+        alert('Authentication required');
+        return;
+      }
+      
+      const response = await fetch(`http://172.16.1.122:8080/patient-service/api/files/${documentId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'X-User-Id': user.id,
+          'Accept': '*/*'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      // Get the blob directly from the fetch response
+      const blob = await response.blob();
+      console.log('Received blob size:', blob.size);
+      console.log('Blob type:', blob.type);
+      
+      if (blob.size === 0) {
+        console.error('Received empty blob');
+        alert('Received empty file from server');
+        return;
+      }
+      
+      // Create URL and open
+      const url = window.URL.createObjectURL(blob);
+      const newWindow = window.open(url, '_blank');
+      
+      if (!newWindow) {
+        // Fallback for popup blockers
+        const link = document.createElement('a');
+        link.href = url;
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+      
+      // Clean up after delay
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+      }, 15000);
+      
+    } catch (error) {
+      console.error('Failed to view document:', error);
+      alert('Failed to view document. Please try again.');
+      throw error;
+    }
+  },
+
+  downloadCaseDocument: async (caseId, documentId, filename) => {
+    try {
+      console.log('Making request to download document:', documentId);
+      
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const token = localStorage.getItem('accessToken');
+      
+      if (!user.id || !token) {
+        alert('Authentication required');
+        return;
+      }
+      
+      const response = await fetch(`http://172.16.1.122:8080/patient-service/api/files/${documentId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'X-User-Id': user.id,
+          'Accept': '*/*'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      // Get the blob directly
+      const blob = await response.blob();
+      
+      if (blob.size === 0) {
+        alert('Received empty file from server');
+        return;
+      }
+      
+      // Get filename from Content-Disposition header or use provided filename
+      let downloadFilename = filename || `document_${documentId}`;
+      const contentDisposition = response.headers.get('content-disposition');
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (filenameMatch && filenameMatch[1]) {
+          downloadFilename = filenameMatch[1].replace(/['"]/g, '');
+        }
+      }
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = downloadFilename;
+      document.body.appendChild(link);
+      link.click();
+      
+      // Clean up
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+    } catch (error) {
+      console.error('Failed to download document:', error);
+      alert('Failed to download document. Please try again.');
+      throw error;
+    }
+  },
+
+
+  // downloadCaseDocument: async (caseId, documentId, filename) => {
+  //   try {
+  //     const response = await api.get(`/patient-service/api/files/${documentId}`, {
+  //       responseType: 'blob' // Important for file download
+  //     });
+      
+  //     // Create blob and download link
+  //     const blob = new Blob([response.data]);
+  //     const url = window.URL.createObjectURL(blob);
+      
+  //     // Create temporary download link and click it
+  //     const link = document.createElement('a');
+  //     link.href = url;
+  //     link.download = filename || `document_${documentId}`;
+  //     document.body.appendChild(link);
+  //     link.click();
+      
+  //     // Clean up
+  //     document.body.removeChild(link);
+  //     window.URL.revokeObjectURL(url);
+      
+  //     return response;
+  //   } catch (error) {
+  //     console.error('Failed to download document:', error);
+  //     throw error;
+  //   }
+  // },
 
   updateCase: async (caseId, caseData) => {
     return await api.put(`/patient-service/api/patients/cases/${caseId}`, caseData);
@@ -40,6 +258,80 @@ const patientService = {
 
   deleteCase: async (caseId) => {
     return await api.delete(`/patient-service/api/patients/cases/${caseId}`);
+  },
+
+    /**
+   * NEW: Update case attachments - Upload additional files to existing case
+   */
+  updateCaseAttachments: async (caseId, files, onUploadProgress) => {
+    const formData = new FormData();
+    
+    if (!files || files.length === 0) {
+      throw new Error('No files provided for upload');
+    }
+    
+    files.forEach(file => {
+      formData.append('files', file);
+    });
+    
+    return await api.upload(
+      `/patient-service/api/patients/cases/${caseId}/attachments`,
+      formData,
+      onUploadProgress
+    );
+  },
+
+  /**
+   * NEW: Get case attachments summary
+   */
+  getCaseAttachments: async (caseId) => {
+    return await api.get(`/patient-service/api/patients/cases/${caseId}/attachments`);
+  },
+
+  // Document Management (Enhanced)
+  uploadCaseDocuments: async (caseId, files, onUploadProgress) => {
+    // This method is now deprecated in favor of updateCaseAttachments
+    // Keeping for backward compatibility
+    return await patientService.updateCaseAttachments(caseId, files, onUploadProgress);
+  },
+
+  getCaseDocuments: async (caseId) => {
+    // This method is now deprecated in favor of getCaseAttachments
+    // Keeping for backward compatibility
+    return await patientService.getCaseAttachments(caseId);
+  },
+
+  /**
+   * Get document content for viewing
+   */
+  getDocumentContent: async (documentId) => {
+    return await api.get(`/patient-service/api/patients/documents/${documentId}/content`, {
+      responseType: 'blob'
+    });
+  },
+
+  /**
+   * Download document
+   */
+  downloadDocument: async (documentId, filename) => {
+    return await api.download(
+      `/patient-service/api/patients/documents/${documentId}/download`,
+      filename
+    );
+  },
+
+  /**
+   * Delete document
+   */
+  deleteDocument: async (documentId) => {
+    return await api.delete(`/patient-service/api/patients/documents/${documentId}`);
+  },
+
+  /**
+   * Get document metadata
+   */
+  getDocumentMetadata: async (documentId) => {
+    return await api.get(`/api/files/${documentId}/metadata`);
   },
 
   // Case Documents

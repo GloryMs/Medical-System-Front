@@ -239,6 +239,7 @@ import ComplaintDetails from './pages/patient/ComplaintDetails';
 import SubscriptionManagement from './pages/patient/SubscriptionManagement';
 import PatientSettings from './pages/patient/PatientSettings';
 import CreateCase from './pages/patient/CreateCase';
+import EditCase from './pages/patient/EditCase';
 
 //Doctor Pages
 import DoctorDashboard from './pages/doctor/DoctorDashboard';
@@ -342,6 +343,8 @@ const AppContent = () => {
                 <Route path="dashboard" element={<PatientDashboard />} />
                 <Route path="cases" element={<PatientCases />} />
                 <Route path="cases/:caseId" element={<CaseDetails />} />
+                <Route path="cases/:caseId/edit" element={<EditCase />} />
+                <Route path="cases/create" element={<CreateCase />} />
                 <Route path="appointments" element={<PatientAppointments />} />
                 <Route path="appointments/:id" element={<AppointmentDetails />} />
                 <Route path="notifications" element={<PatientNotifications />} />
@@ -351,8 +354,7 @@ const AppContent = () => {
                 <Route path="complaints" element={<PatientComplaints />} />
                 <Route path="complaints/:id" element={<ComplaintDetails />} />
                 <Route path="subscription" element={<SubscriptionManagement />} />
-                <Route path="settings" element={<PatientSettings />} />
-                <Route path="cases/create" element={<CreateCase />} />
+                <Route path="settings" element={<PatientSettings />} />            
               </Routes>
             </ProtectedRoute>
           } />
