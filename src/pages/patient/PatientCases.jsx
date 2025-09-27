@@ -315,7 +315,7 @@ const PatientCases = () => {
                       </Button>
                     )}
 
-                    {['SUBMITTED', 'REJECTED'].includes(case_.status) && (
+                    {['SUBMITTED', 'REJECTED', 'PENDING'].includes(case_.status) && (
                       <Button
                         variant="error"
                         size="sm"

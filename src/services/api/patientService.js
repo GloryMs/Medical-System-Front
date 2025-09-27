@@ -257,7 +257,7 @@ const patientService = {
   },
 
   deleteCase: async (caseId) => {
-    return await api.delete(`/patient-service/api/patients/cases/${caseId}`);
+    return await api.put(`/patient-service/api/patients/cases/${caseId}/delete`);
   },
 
     /**

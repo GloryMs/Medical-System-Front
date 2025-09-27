@@ -189,7 +189,7 @@ const CreateCase = () => {
       ] = await Promise.all([
         execute(() => commonService.getMedicalConfigurations('diseases')),
         execute(() => commonService.getMedicalConfigurations('symptoms')),
-        execute(() => commonService.getMedicalConfigurations('medications')),
+        execute(() => commonService.getAllMedications()),
         execute(() => commonService.getMedicalConfigurations('SPECIALIZATION')),
         execute(() => commonService.getMedicalConfigurations('SUBSPECIALIZATION'))
       ]);
@@ -230,15 +230,29 @@ const CreateCase = () => {
     }
   };
 
+  // const loadMedicationsInCategory = async (category) => {
+  //   try {
+  //     const medications = await execute(() => commonService.getMedicationsByCategory(category));
+  //     setMedicationsInCategory(medications || []);
+  //   } catch (error) {
+  //     console.error('Failed to load medications for category:', category, error);
+  //     setMedicationsInCategory([]);
+  //   }
+  // };
+
   const loadMedicationsInCategory = async (category) => {
     try {
-      const medications = await execute(() => commonService.getMedicationsByCategory(category));
-      setMedicationsInCategory(medications || []);
+      // Filter medications from the local medicalConfigs.medications array by category and isActive status
+      const filteredMedications = medicalConfigs.medications.filter(
+        medication => medication.category === category && medication.isActive === true
+      );
+      setMedicationsInCategory(filteredMedications || []);
     } catch (error) {
       console.error('Failed to load medications for category:', category, error);
       setMedicationsInCategory([]);
     }
   };
+
 
   const loadSubspecializations = async (parentCode) => {
     try {
@@ -498,32 +512,124 @@ const CreateCase = () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Secondary Diseases/Conditions (Optional, max 5)
             </label>
-            <select
-              multiple
-              value={selectedSecondaryDiseases}
-              onChange={(e) => {
-                const values = Array.from(e.target.selectedOptions, option => option.value);
-                if (values.length <= 5) {
-                  setValue('secondaryDiseaseCodes', values);
-                }
-              }}
-              disabled={!selectedDiseaseCategory}
-              className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 min-h-[120px] ${
-                !selectedDiseaseCategory ? 'bg-gray-100 cursor-not-allowed' : ''
-              }`}
-            >
-              {diseasesInCategory
-                .filter(disease => disease.isActive && disease.icdCode !== watch('primaryDiseaseCode'))
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .map((disease) => (
-                  <option key={disease.icdCode} value={disease.icdCode}>
-                    {disease.name} ({disease.icdCode})
-                  </option>
-                ))}
-            </select>
-            <p className="text-xs text-gray-500 mt-1">
-              Hold Ctrl/Cmd to select multiple. Selected: {selectedSecondaryDiseases.length}/5
-            </p>
+
+            {/* Checkbox Container */}
+            <div className={`w-full border rounded-lg p-4 max-h-[250px] overflow-y-auto ${
+              !selectedDiseaseCategory ? 'bg-gray-100 border-gray-200' : 'border-gray-300'
+            }`}>
+              {!selectedDiseaseCategory ? (
+                <div className="text-center py-6">
+                  <p className="text-sm text-gray-500">
+                    Please select a primary disease category first
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {diseasesInCategory
+                    .filter(disease => disease.isActive && disease.icdCode !== watch('primaryDiseaseCode'))
+                    .sort((a, b) => a.name.localeCompare(b.name))
+                    .map((disease) => (
+                      <label
+                        key={disease.icdCode}
+                        className="flex items-start space-x-3 p-2 rounded hover:bg-gray-50 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          value={disease.icdCode}
+                          checked={selectedSecondaryDiseases.includes(disease.icdCode)}
+                          onChange={(e) => {
+                            const { value, checked } = e.target;
+                            let newValues;
+                            
+                            if (checked) {
+                              // Add disease if not already selected and under limit
+                              if (selectedSecondaryDiseases.length < 5 && !selectedSecondaryDiseases.includes(value)) {
+                                newValues = [...selectedSecondaryDiseases, value];
+                              } else {
+                                return; // Don't add if limit reached
+                              }
+                            } else {
+                              // Remove disease
+                              newValues = selectedSecondaryDiseases.filter(code => code !== value);
+                            }
+                            
+                            setValue('secondaryDiseaseCodes', newValues);
+                          }}
+                          className="mt-0.5 h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                          disabled={!selectedSecondaryDiseases.includes(disease.icdCode) && selectedSecondaryDiseases.length >= 5}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <span className="text-sm font-medium text-gray-900">
+                            {disease.name}
+                          </span>
+                          <span className="text-xs text-gray-500 ml-1">
+                            ({disease.icdCode})
+                          </span>
+                        </div>
+                      </label>
+                    ))}
+                  
+                  {/* Empty state when category is selected but no diseases available */}
+                  {diseasesInCategory
+                    .filter(disease => disease.isActive && disease.icdCode !== watch('primaryDiseaseCode'))
+                    .length === 0 && selectedDiseaseCategory && (
+                    <p className="text-sm text-gray-500 text-center py-4">
+                      No secondary diseases available in this category
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Selection Counter and Clear Button */}
+            <div className="flex justify-between items-center mt-2">
+              <p className="text-xs text-gray-500">
+                Selected: {selectedSecondaryDiseases.length}/5
+              </p>
+              
+              {/* Optional: Clear All Button */}
+              {selectedSecondaryDiseases.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setValue('secondaryDiseaseCodes', []);
+                  }}
+                  className="text-xs text-primary-600 hover:text-primary-800 underline"
+                >
+                  Clear All
+                </button>
+              )}
+            </div>
+
+            {/* Optional: Show Selected Items */}
+            {selectedSecondaryDiseases.length > 0 && (
+              <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                <p className="text-xs font-medium text-gray-700 mb-2">Selected Secondary Diseases:</p>
+                <div className="flex flex-wrap gap-1">
+                  {selectedSecondaryDiseases.map(code => {
+                    const disease = diseasesInCategory.find(d => d.icdCode === code);
+                    return disease ? (
+                      <span
+                        key={code}
+                        className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800"
+                      >
+                        {disease.name} ({disease.icdCode})
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newValues = selectedSecondaryDiseases.filter(c => c !== code);
+                            setValue('secondaryDiseaseCodes', newValues);
+                          }}
+                          className="ml-1 text-blue-600 hover:text-blue-800"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ) : null;
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Symptoms */}
@@ -531,35 +637,122 @@ const CreateCase = () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Symptoms * (Select at least 1, max 20)
             </label>
-            <select
-              multiple
-              value={selectedSymptoms}
-              onChange={(e) => {
-                const values = Array.from(e.target.selectedOptions, option => option.value);
-                if (values.length <= 20) {
-                  setValue('symptomCodes', values);
-                  trigger('symptomCodes');
-                }
-              }}
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 min-h-[150px] ${
-                errors.symptomCodes ? 'border-red-300' : 'border-gray-300'
-              }`}
-            >
-              {medicalConfigs.symptoms
-                .filter(symptom => symptom.isActive)
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .map((symptom) => (
-                  <option key={symptom.code} value={symptom.code}>
-                    {symptom.name} ({symptom.bodySystem})
-                  </option>
-                ))}
-            </select>
+
+            {/* Checkbox Container */}
+            <div className={`w-full border rounded-lg p-4 max-h-[300px] overflow-y-auto ${
+              errors.symptomCodes ? 'border-red-300' : 'border-gray-300'
+            }`}>
+              <div className="space-y-2">
+                {medicalConfigs.symptoms
+                  .filter(symptom => symptom.isActive)
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((symptom) => (
+                    <label
+                      key={symptom.code}
+                      className="flex items-start space-x-3 p-2 rounded hover:bg-gray-50 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        value={symptom.code}
+                        checked={selectedSymptoms.includes(symptom.code)}
+                        onChange={(e) => {
+                          const { value, checked } = e.target;
+                          let newValues;
+                          
+                          if (checked) {
+                            // Add symptom if not already selected and under limit
+                            if (selectedSymptoms.length < 20 && !selectedSymptoms.includes(value)) {
+                              newValues = [...selectedSymptoms, value];
+                            } else {
+                              return; // Don't add if limit reached
+                            }
+                          } else {
+                            // Remove symptom
+                            newValues = selectedSymptoms.filter(code => code !== value);
+                          }
+                          
+                          setValue('symptomCodes', newValues);
+                          trigger('symptomCodes');
+                        }}
+                        className="mt-0.5 h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                        disabled={!selectedSymptoms.includes(symptom.code) && selectedSymptoms.length >= 20}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm font-medium text-gray-900">
+                          {symptom.name}
+                        </span>
+                        <span className="text-xs text-gray-500 ml-1">
+                          ({symptom.bodySystem})
+                        </span>
+                      </div>
+                    </label>
+                  ))}
+              </div>
+              
+              {/* Empty state */}
+              {medicalConfigs.symptoms.filter(symptom => symptom.isActive).length === 0 && (
+                <p className="text-sm text-gray-500 text-center py-4">
+                  No symptoms available
+                </p>
+              )}
+            </div>
+
+            {/* Error Message */}
             {errors.symptomCodes && (
               <p className="text-sm text-red-600 mt-1">{errors.symptomCodes.message}</p>
             )}
-            <p className="text-xs text-gray-500 mt-1">
-              Hold Ctrl/Cmd to select multiple. Selected: {selectedSymptoms.length}/20
-            </p>
+            
+            {/* Selection Counter */}
+            <div className="flex justify-between items-center mt-2">
+              <p className="text-xs text-gray-500">
+                Selected: {selectedSymptoms.length}/20
+              </p>
+              
+              {/* Optional: Clear All Button */}
+              {selectedSymptoms.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setValue('symptomCodes', []);
+                    trigger('symptomCodes');
+                  }}
+                  className="text-xs text-primary-600 hover:text-primary-800 underline"
+                >
+                  Clear All
+                </button>
+              )}
+            </div>
+
+            {/* Optional: Show Selected Items */}
+            {selectedSymptoms.length > 0 && (
+              <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                <p className="text-xs font-medium text-gray-700 mb-2">Selected Symptoms:</p>
+                <div className="flex flex-wrap gap-1">
+                  {selectedSymptoms.map(code => {
+                    const symptom = medicalConfigs.symptoms.find(s => s.code === code);
+                    return symptom ? (
+                      <span
+                        key={code}
+                        className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-primary-100 text-primary-800"
+                      >
+                        {symptom.name}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newValues = selectedSymptoms.filter(c => c !== code);
+                            setValue('symptomCodes', newValues);
+                            trigger('symptomCodes');
+                          }}
+                          className="ml-1 text-primary-600 hover:text-primary-800"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ) : null;
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </Card>
 
@@ -590,35 +783,135 @@ const CreateCase = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Current Medications (Optional, max 15)
               </label>
-              <select
-                multiple
-                value={selectedMedications}
-                onChange={(e) => {
-                  const values = Array.from(e.target.selectedOptions, option => option.value);
-                  if (values.length <= 15) {
-                    setValue('currentMedicationCodes', values);
+
+              {/* Checkbox Container */}
+              <div className={`w-full border rounded-lg p-4 max-h-[300px] overflow-y-auto ${
+                !selectedMedicationCategory ? 'bg-gray-100 border-gray-200' : 'border-gray-300'
+              }`}>
+                {!selectedMedicationCategory ? (
+                  <div className="text-center py-6">
+                    <p className="text-sm text-gray-500">
+                      Please select a medication category first
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {medicationsInCategory
+                      .filter(medication => medication.isActive)
+                      .sort((a, b) => a.name.localeCompare(b.name))
+                      .map((medication) => (
+                        <label
+                          key={medication.atcCode}
+                          className="flex items-start space-x-3 p-2 rounded hover:bg-gray-50 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            value={medication.atcCode}
+                            checked={selectedMedications.includes(medication.atcCode)}
+                            onChange={(e) => {
+                              const { value, checked } = e.target;
+                              let newValues;
+                              
+                              if (checked) {
+                                // Add medication if not already selected and under limit
+                                if (selectedMedications.length < 15 && !selectedMedications.includes(value)) {
+                                  newValues = [...selectedMedications, value];
+                                } else {
+                                  return; // Don't add if limit reached
+                                }
+                              } else {
+                                // Remove medication
+                                newValues = selectedMedications.filter(code => code !== value);
+                              }
+                              
+                              setValue('currentMedicationCodes', newValues);
+                            }}
+                            className="mt-0.5 h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                            disabled={!selectedMedications.includes(medication.atcCode) && selectedMedications.length >= 15}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium text-gray-900">
+                              {medication.name}
+                            </div>
+                            <div className="text-xs text-gray-600">
+                              {medication.genericName}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              ({medication.atcCode})
+                            </div>
+                          </div>
+                        </label>
+                      ))}
+                    
+                    {/* Empty state when category is selected but no medications available */}
+                    {medicationsInCategory
+                      .filter(medication => medication.isActive)
+                      .length === 0 && selectedMedicationCategory && (
+                      <p className="text-sm text-gray-500 text-center py-4">
+                        No medications available in this category
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Selection Counter and Clear Button */}
+              <div className="flex justify-between items-center mt-2">
+                <p className="text-xs text-gray-500">
+                  {selectedMedicationCategory 
+                    ? `Selected: ${selectedMedications.length}/15`
+                    : 'Select a category first to see medications'
                   }
-                }}
-                disabled={!selectedMedicationCategory}
-                className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 min-h-[120px] ${
-                  !selectedMedicationCategory ? 'bg-gray-100 cursor-not-allowed' : ''
-                }`}
-              >
-                {medicationsInCategory
-                  .filter(medication => medication.isActive)
-                  .sort((a, b) => a.name.localeCompare(b.name))
-                  .map((medication) => (
-                    <option key={medication.atcCode} value={medication.atcCode}>
-                      {medication.name} - {medication.genericName} ({medication.atcCode})
-                    </option>
-                  ))}
-              </select>
-              <p className="text-xs text-gray-500 mt-1">
-                {selectedMedicationCategory 
-                  ? `Hold Ctrl/Cmd to select multiple. Selected: ${selectedMedications.length}/15`
-                  : 'Select a category first to see medications'
-                }
-              </p>
+                </p>
+                
+                {/* Optional: Clear All Button */}
+                {selectedMedications.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setValue('currentMedicationCodes', []);
+                    }}
+                    className="text-xs text-primary-600 hover:text-primary-800 underline"
+                  >
+                    Clear All
+                  </button>
+                )}
+              </div>
+
+              {/* Optional: Show Selected Items */}
+              {selectedMedications.length > 0 && (
+                <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                  <p className="text-xs font-medium text-gray-700 mb-2">Selected Medications:</p>
+                  <div className="flex flex-wrap gap-1">
+                    {selectedMedications.map(code => {
+                      const medication = medicationsInCategory.find(m => m.atcCode === code);
+                      return medication ? (
+                        <span
+                          key={code}
+                          className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800"
+                        >
+                          <div className="text-left">
+                            <div className="font-medium">{medication.name}</div>
+                            {medication.genericName && medication.genericName !== medication.name && (
+                              <div className="text-xs opacity-75">{medication.genericName}</div>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newValues = selectedMedications.filter(c => c !== code);
+                              setValue('currentMedicationCodes', newValues);
+                            }}
+                            className="ml-2 text-green-600 hover:text-green-800 font-bold"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ) : null;
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </Card>
@@ -680,34 +973,118 @@ const CreateCase = () => {
             </div>
           </div>
 
+
           {/* Additional Specializations */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Additional Specializations (Optional, max 3)
             </label>
-            <select
-              multiple
-              value={selectedSecondarySpecs}
-              onChange={(e) => {
-                const values = Array.from(e.target.selectedOptions, option => option.value);
-                if (values.length <= 3) {
-                  setValue('secondarySpecializations', values);
-                }
-              }}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 min-h-[100px]"
-            >
-              {medicalConfigs.specializations
-                .filter(spec => spec.isActive && spec.level === 1 && spec.code !== selectedMainSpecialization)
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .map((spec) => (
-                  <option key={spec.code} value={spec.code}>
-                    {spec.name}
-                  </option>
-                ))}
-            </select>
-            <p className="text-xs text-gray-500 mt-1">
-              Hold Ctrl/Cmd to select multiple. Selected: {selectedSecondarySpecs.length}/3
-            </p>
+
+            {/* Checkbox Container */}
+            <div className="w-full border border-gray-300 rounded-lg p-4 max-h-[200px] overflow-y-auto">
+              <div className="space-y-2">
+                {medicalConfigs.specializations
+                  .filter(spec => spec.isActive && spec.level === 1 && spec.code !== selectedMainSpecialization)
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((spec) => (
+                    <label
+                      key={spec.code}
+                      className="flex items-center space-x-3 p-2 rounded hover:bg-gray-50 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        value={spec.code}
+                        checked={selectedSecondarySpecs.includes(spec.code)}
+                        onChange={(e) => {
+                          const { value, checked } = e.target;
+                          let newValues;
+                          
+                          if (checked) {
+                            // Add specialization if not already selected and under limit
+                            if (selectedSecondarySpecs.length < 3 && !selectedSecondarySpecs.includes(value)) {
+                              newValues = [...selectedSecondarySpecs, value];
+                            } else {
+                              return; // Don't add if limit reached
+                            }
+                          } else {
+                            // Remove specialization
+                            newValues = selectedSecondarySpecs.filter(code => code !== value);
+                          }
+                          
+                          setValue('secondarySpecializations', newValues);
+                        }}
+                        className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                        disabled={!selectedSecondarySpecs.includes(spec.code) && selectedSecondarySpecs.length >= 3}
+                      />
+                      <span className="text-sm font-medium text-gray-900 flex-1">
+                        {spec.name}
+                      </span>
+                    </label>
+                  ))}
+                
+                {/* Empty state */}
+                {medicalConfigs.specializations
+                  .filter(spec => spec.isActive && spec.level === 1 && spec.code !== selectedMainSpecialization)
+                  .length === 0 && (
+                  <p className="text-sm text-gray-500 text-center py-4">
+                    {selectedMainSpecialization 
+                      ? "No additional specializations available" 
+                      : "No specializations available"
+                    }
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Selection Counter and Clear Button */}
+            <div className="flex justify-between items-center mt-2">
+              <p className="text-xs text-gray-500">
+                Selected: {selectedSecondarySpecs.length}/3
+              </p>
+              
+              {/* Optional: Clear All Button */}
+              {selectedSecondarySpecs.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setValue('secondarySpecializations', []);
+                  }}
+                  className="text-xs text-primary-600 hover:text-primary-800 underline"
+                >
+                  Clear All
+                </button>
+              )}
+            </div>
+
+            {/* Optional: Show Selected Items */}
+            {selectedSecondarySpecs.length > 0 && (
+              <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                <p className="text-xs font-medium text-gray-700 mb-2">Selected Additional Specializations:</p>
+                <div className="flex flex-wrap gap-1">
+                  {selectedSecondarySpecs.map(code => {
+                    const spec = medicalConfigs.specializations.find(s => s.code === code);
+                    return spec ? (
+                      <span
+                        key={code}
+                        className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-purple-100 text-purple-800"
+                      >
+                        {spec.name}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newValues = selectedSecondarySpecs.filter(c => c !== code);
+                            setValue('secondarySpecializations', newValues);
+                          }}
+                          className="ml-1 text-purple-600 hover:text-purple-800"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ) : null;
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </Card>
 

@@ -143,12 +143,23 @@ const EditCase = () => {
     }
   }, [caseId]);
 
-  // Load diseases when category changes
+  // Load diseases when category changes OR when medical configs load
   useEffect(() => {
     if (selectedDiseaseCategory) {
       loadDiseasesInCategory(selectedDiseaseCategory);
     }
   }, [selectedDiseaseCategory]);
+
+  // Auto-detect disease category when medical configs and case data are both loaded
+  useEffect(() => {
+    if (caseData?.primaryDiseaseCode && medicalConfigs.diseases.length > 0 && !selectedDiseaseCategory) {
+      const disease = medicalConfigs.diseases.find(d => d.icdCode === caseData.primaryDiseaseCode);
+      if (disease?.category) {
+        setSelectedDiseaseCategory(disease.category);
+        loadDiseasesInCategory(disease.category);
+      }
+    }
+  }, [caseData, medicalConfigs.diseases, selectedDiseaseCategory]);
 
   // Load medications when category changes
   useEffect(() => {
@@ -196,22 +207,31 @@ const EditCase = () => {
       
       setCaseData(data);
       
-      // Reset form with case data
+      // Reset form with case data - handle empty arrays properly
       reset({
         caseTitle: data.caseTitle || '',
         description: data.description || '',
         primaryDiseaseCode: data.primaryDiseaseCode || '',
-        secondaryDiseaseCodes: data.secondaryDiseaseCodes || [],
-        symptomCodes: data.symptomCodes || [],
-        currentMedicationCodes: data.currentMedicationCodes || [],
+        secondaryDiseaseCodes: data.secondaryDiseaseCodes || [], // Always array, even if empty
+        symptomCodes: data.symptomCodes || [], // Always array, even if empty
+        currentMedicationCodes: data.currentMedicationCodes || [], // Always array, even if empty
         requiredSpecialization: data.requiredSpecialization || '',
-        secondarySpecializations: data.secondarySpecializations || [],
+        secondarySpecializations: data.secondarySpecializations || [], // Always array, even if empty
         urgencyLevel: data.urgencyLevel || 'MEDIUM',
         complexity: data.complexity || 'MODERATE'
       });
       
-      // Set selected values for dropdowns
+      // Set selected values for dropdowns - handle empty values
       setSelectedMainSpecialization(data.requiredSpecialization || '');
+      
+      // If there's a primary disease, try to determine its category
+      if (data.primaryDiseaseCode && medicalConfigs.diseases.length > 0) {
+        const disease = medicalConfigs.diseases.find(d => d.icdCode === data.primaryDiseaseCode);
+        if (disease && disease.category) {
+          setSelectedDiseaseCategory(disease.category);
+          // Don't call loadDiseasesInCategory here - let the useEffect handle it
+        }
+      }
       
     } catch (error) {
       console.error('Failed to load case data:', error);
@@ -443,7 +463,9 @@ const EditCase = () => {
             {/* Disease Category */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Disease Category *
+                Disease Category * {!selectedDiseaseCategory && caseData?.primaryDiseaseCode && (
+                  <span className="text-xs text-blue-600">(Please select category to edit diseases)</span>
+                )}
               </label>
               <select
                 value={selectedDiseaseCategory}
@@ -457,6 +479,12 @@ const EditCase = () => {
                   </option>
                 ))}
               </select>
+              <p className="text-xs text-gray-500 mt-1">
+                {!selectedDiseaseCategory && caseData?.primaryDiseaseCode 
+                  ? 'Current disease: ' + caseData.primaryDiseaseCode + ' (select category to modify)'
+                  : selectedDiseaseCategory ? 'Category selected - now choose diseases below' : 'Select a category first'
+                }
+              </p>
             </div>
 
             {/* Primary Disease */}
@@ -489,10 +517,85 @@ const EditCase = () => {
             </div>
           </div>
 
+          {/* Secondary Diseases */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Secondary Diseases/Conditions (Optional, max 5)
+            </label>
+            <select
+              multiple
+              value={selectedSecondaryDiseases}
+              onChange={(e) => {
+                const values = Array.from(e.target.selectedOptions, option => option.value);
+                if (values.length <= 5) {
+                  setValue('secondaryDiseaseCodes', values);
+                }
+              }}
+              disabled={!selectedDiseaseCategory}
+              className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 min-h-[120px] ${
+                !selectedDiseaseCategory ? 'bg-gray-100 cursor-not-allowed' : ''
+              }`}
+            >
+              {diseasesInCategory
+                .filter(disease => disease.isActive && disease.icdCode !== watch('primaryDiseaseCode'))
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map((disease) => (
+                  <option key={disease.icdCode} value={disease.icdCode}>
+                    {disease.name} ({disease.icdCode})
+                  </option>
+                ))}
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              Hold Ctrl/Cmd to select multiple. Selected: {selectedSecondaryDiseases.length}/5
+            </p>
+          </div>
+
+          {/* Secondary Diseases */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Secondary Diseases/Conditions (Optional, max 5)
+              {!caseData?.secondaryDiseaseCodes?.length && (
+                <span className="text-xs text-green-600 ml-2">(Add additional diseases if applicable)</span>
+              )}
+            </label>
+            <select
+              multiple
+              value={selectedSecondaryDiseases}
+              onChange={(e) => {
+                const values = Array.from(e.target.selectedOptions, option => option.value);
+                if (values.length <= 5) {
+                  setValue('secondaryDiseaseCodes', values);
+                }
+              }}
+              disabled={!selectedDiseaseCategory}
+              className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 min-h-[120px] ${
+                !selectedDiseaseCategory ? 'bg-gray-100 cursor-not-allowed' : ''
+              }`}
+            >
+              {diseasesInCategory
+                .filter(disease => disease.isActive && disease.icdCode !== watch('primaryDiseaseCode'))
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map((disease) => (
+                  <option key={disease.icdCode} value={disease.icdCode}>
+                    {disease.name} ({disease.icdCode})
+                  </option>
+                ))}
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              Hold Ctrl/Cmd to select multiple. Selected: {selectedSecondaryDiseases.length}/5
+              {selectedSecondaryDiseases.length === 0 && (
+                <span className="text-green-600 ml-2">- No secondary diseases currently selected</span>
+              )}
+            </p>
+          </div>
+
           {/* Symptoms */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Symptoms * (Select at least 1, max 20)
+              {(!caseData?.symptomCodes?.length || caseData.symptomCodes.length === 0) && (
+                <span className="text-xs text-red-600 ml-2">(Required - please select symptoms)</span>
+              )}
             </label>
             <select
               multiple
@@ -522,6 +625,157 @@ const EditCase = () => {
             )}
             <p className="text-xs text-gray-500 mt-1">
               Hold Ctrl/Cmd to select multiple. Selected: {selectedSymptoms.length}/20
+              {selectedSymptoms.length === 0 && (
+                <span className="text-red-600 ml-2">- At least one symptom is required</span>
+              )}
+            </p>
+          </div>
+        </Card>
+
+        {/* Current Medications */}
+        <Card title="Current Medications" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Medication Category */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Medication Category
+              </label>
+              <select
+                value={selectedMedicationCategory}
+                onChange={(e) => handleMedicationCategory(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="">Select medication category</option>
+                {medicationCategories.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Current Medications */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Current Medications (Optional, max 15)
+              </label>
+              <select
+                multiple
+                value={selectedMedications}
+                onChange={(e) => {
+                  const values = Array.from(e.target.selectedOptions, option => option.value);
+                  if (values.length <= 15) {
+                    setValue('currentMedicationCodes', values);
+                  }
+                }}
+                disabled={!selectedMedicationCategory}
+                className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 min-h-[120px] ${
+                  !selectedMedicationCategory ? 'bg-gray-100 cursor-not-allowed' : ''
+                }`}
+              >
+                {medicationsInCategory
+                  .filter(medication => medication.isActive)
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((medication) => (
+                    <option key={medication.atcCode} value={medication.atcCode}>
+                      {medication.name} - {medication.genericName} ({medication.atcCode})
+                    </option>
+                  ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                {selectedMedicationCategory 
+                  ? `Hold Ctrl/Cmd to select multiple. Selected: ${selectedMedications.length}/15`
+                  : 'Select a category first to see medications'
+                }
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        {/* Specialization Requirements */}
+        <Card title="Specialization Requirements" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Main Specialization */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Required Specialization *
+              </label>
+              <select
+                value={selectedMainSpecialization}
+                onChange={(e) => handleMainSpecialization(e.target.value)}
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 ${
+                  errors.requiredSpecialization ? 'border-red-300' : 'border-gray-300'
+                }`}
+              >
+                <option value="">Select required specialization</option>
+                {medicalConfigs.specializations
+                  .filter(spec => spec.isActive && spec.level === 1)
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((spec) => (
+                    <option key={spec.code} value={spec.code}>
+                      {spec.name}
+                    </option>
+                  ))}
+              </select>
+              {errors.requiredSpecialization && (
+                <p className="text-sm text-red-600 mt-1">{errors.requiredSpecialization.message}</p>
+              )}
+            </div>
+
+            {/* Sub-specialization */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Sub-specialization (Optional)
+              </label>
+              <select
+                {...register('subspecialization')}
+                disabled={!selectedMainSpecialization}
+                className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 ${
+                  !selectedMainSpecialization ? 'bg-gray-100 cursor-not-allowed' : ''
+                }`}
+              >
+                <option value="">
+                  {selectedMainSpecialization ? 'Select sub-specialization' : 'Select main specialization first'}
+                </option>
+                {subspecializations
+                  .filter(subspec => subspec.isActive)
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((subspec) => (
+                    <option key={subspec.code} value={subspec.code}>
+                      {subspec.name}
+                    </option>
+                  ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Additional Specializations */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Additional Specializations (Optional, max 3)
+            </label>
+            <select
+              multiple
+              value={selectedSecondarySpecs}
+              onChange={(e) => {
+                const values = Array.from(e.target.selectedOptions, option => option.value);
+                if (values.length <= 3) {
+                  setValue('secondarySpecializations', values);
+                }
+              }}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 min-h-[100px]"
+            >
+              {medicalConfigs.specializations
+                .filter(spec => spec.isActive && spec.level === 1 && spec.code !== selectedMainSpecialization)
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map((spec) => (
+                  <option key={spec.code} value={spec.code}>
+                    {spec.name}
+                  </option>
+                ))}
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              Hold Ctrl/Cmd to select multiple. Selected: {selectedSecondarySpecs.length}/3
             </p>
           </div>
         </Card>

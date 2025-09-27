@@ -18,7 +18,9 @@ import {
   Stethoscope,
   Pill,
   Activity,
-  Heart
+  Heart,
+  Save,
+  X
 } from 'lucide-react';
 
 import Card from '../../components/common/Card';
@@ -28,6 +30,7 @@ import Modal, { ConfirmModal } from '../../components/common/Modal';
 import { useAuth } from '../../hooks/useAuth';
 import { useApi } from '../../hooks/useApi';
 import patientService from '../../services/api/patientService';
+import commonService from '../../services/api/commonService';
 
 // Helper functions
 const formatDate = (dateString) => {
@@ -61,6 +64,14 @@ const CaseDetails = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
 
+  // Medication editing states
+  const [isEditingMedications, setIsEditingMedications] = useState(false);
+  const [medicationCategories, setMedicationCategories] = useState([]);
+  const [medicationsInCategory, setMedicationsInCategory] = useState([]);
+  const [selectedMedicationCategory, setSelectedMedicationCategory] = useState('');
+  const [selectedMedications, setSelectedMedications] = useState([]);
+  const [isSavingMedications, setIsSavingMedications] = useState(false);
+
   // File upload configuration
   const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
   const ALLOWED_FILE_TYPES = {
@@ -75,6 +86,7 @@ const CaseDetails = () => {
   useEffect(() => {
     if (caseId) {
       loadCaseDetails();
+      loadMedicationCategories();
     }
   }, [caseId]);
 
@@ -82,8 +94,89 @@ const CaseDetails = () => {
     try {
       const data = await execute(() => patientService.getCaseById(caseId));
       setCaseData(data);
+      setSelectedMedications(data.currentMedicationCodes || []);
     } catch (error) {
       console.error('Failed to load case details:', error);
+    }
+  };
+
+  const loadMedicationCategories = async () => {
+    try {
+      const medications = await execute(() => commonService.getMedicalConfigurations('medications'));
+      const uniqueCategories = [...new Set(
+        (medications || []).map(medication => medication.category).filter(Boolean)
+      )].sort();
+      setMedicationCategories(uniqueCategories);
+    } catch (error) {
+      console.error('Failed to load medication categories:', error);
+    }
+  };
+
+  const loadMedicationsInCategory = async (category) => {
+    try {
+      const medications = await execute(() => commonService.getMedicationsByCategory(category));
+      setMedicationsInCategory(medications || []);
+    } catch (error) {
+      console.error('Failed to load medications for category:', category, error);
+      setMedicationsInCategory([]);
+    }
+  };
+
+  const handleMedicationCategoryChange = (category) => {
+    setSelectedMedicationCategory(category);
+    if (category) {
+      loadMedicationsInCategory(category);
+    } else {
+      setMedicationsInCategory([]);
+    }
+  };
+
+  const handleStartEditingMedications = () => {
+    setIsEditingMedications(true);
+    setSelectedMedications(caseData.currentMedicationCodes || []);
+  };
+
+  const handleCancelEditingMedications = () => {
+    setIsEditingMedications(false);
+    setSelectedMedications(caseData.currentMedicationCodes || []);
+    setSelectedMedicationCategory('');
+    setMedicationsInCategory([]);
+  };
+
+  const handleSaveMedications = async () => {
+    setIsSavingMedications(true);
+    try {
+      const updateData = {
+        caseTitle: caseData.caseTitle,
+        description: caseData.description,
+        primaryDiseaseCode: caseData.primaryDiseaseCode,
+        secondaryDiseaseCodes: caseData.secondaryDiseaseCodes || [],
+        symptomCodes: caseData.symptomCodes || [],
+        currentMedicationCodes: selectedMedications,
+        requiredSpecialization: caseData.requiredSpecialization,
+        secondarySpecializations: caseData.secondarySpecializations || [],
+        urgencyLevel: caseData.urgencyLevel,
+        complexity: caseData.complexity
+      };
+
+      await execute(() => patientService.updateCase(caseId, updateData));
+      
+      // Update local state
+      setCaseData(prev => ({
+        ...prev,
+        currentMedicationCodes: selectedMedications
+      }));
+      
+      setIsEditingMedications(false);
+      setSelectedMedicationCategory('');
+      setMedicationsInCategory([]);
+      alert('Medications updated successfully!');
+      
+    } catch (error) {
+      console.error('Failed to update medications:', error);
+      alert('Failed to update medications. Please try again.');
+    } finally {
+      setIsSavingMedications(false);
     }
   };
 
@@ -449,20 +542,155 @@ const CaseDetails = () => {
                 </div>
               </Card>
 
-              {/* Current Medications */}
-              <Card title="Current Medications">
-                <div className="space-y-2">
-                  {caseData.currentMedicationCodes && caseData.currentMedicationCodes.length > 0 ? (
-                    caseData.currentMedicationCodes.map((medication, index) => (
-                      <div key={index} className="flex items-center space-x-2 p-2 bg-gray-50 rounded">
-                        <Pill className="w-4 h-4 text-blue-600" />
-                        <Badge variant="success">{medication}</Badge>
-                      </div>
-                    ))
+              {/* Current Medications - Editable Section */}
+              <Card>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-medium text-gray-900">Current Medications</h3>
+                  {!isEditingMedications ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      icon={<Edit className="w-4 h-4" />}
+                      onClick={handleStartEditingMedications}
+                      disabled={!['SUBMITTED', 'PENDING'].includes(caseData.status)}
+                    >
+                      Edit Medications
+                    </Button>
                   ) : (
-                    <p className="text-gray-500">No current medications recorded</p>
+                    <div className="flex space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        icon={<X className="w-4 h-4" />}
+                        onClick={handleCancelEditingMedications}
+                        disabled={isSavingMedications}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        icon={<Save className="w-4 h-4" />}
+                        onClick={handleSaveMedications}
+                        loading={isSavingMedications}
+                        disabled={isSavingMedications}
+                      >
+                        Save
+                      </Button>
+                    </div>
                   )}
                 </div>
+
+                {!isEditingMedications ? (
+                  // Display Mode
+                  <div className="space-y-2">
+                    {caseData.currentMedicationCodes && caseData.currentMedicationCodes.length > 0 ? (
+                      caseData.currentMedicationCodes.map((medication, index) => (
+                        <div key={index} className="flex items-center space-x-2 p-2 bg-gray-50 rounded">
+                          <Pill className="w-4 h-4 text-blue-600" />
+                          <Badge variant="success">{medication}</Badge>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-8">
+                        <Pill className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                        <p className="text-gray-500 mb-4">No current medications recorded</p>
+                        <Button
+                          variant="outline"
+                          icon={<Plus className="w-4 h-4" />}
+                          onClick={handleStartEditingMedications}
+                          disabled={!['SUBMITTED', 'PENDING'].includes(caseData.status)}
+                        >
+                          Add Medications
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  // Edit Mode
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Medication Category */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Medication Category
+                        </label>
+                        <select
+                          value={selectedMedicationCategory}
+                          onChange={(e) => handleMedicationCategoryChange(e.target.value)}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                        >
+                          <option value="">Select medication category</option>
+                          {medicationCategories.map((category) => (
+                            <option key={category} value={category}>
+                              {category}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Medication Selection */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Available Medications (max 15)
+                        </label>
+                        <select
+                          multiple
+                          value={selectedMedications}
+                          onChange={(e) => {
+                            const values = Array.from(e.target.selectedOptions, option => option.value);
+                            if (values.length <= 15) {
+                              setSelectedMedications(values);
+                            }
+                          }}
+                          disabled={!selectedMedicationCategory}
+                          className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 min-h-[120px] ${
+                            !selectedMedicationCategory ? 'bg-gray-100 cursor-not-allowed' : ''
+                          }`}
+                        >
+                          {medicationsInCategory
+                            .filter(medication => medication.isActive)
+                            .sort((a, b) => a.name.localeCompare(b.name))
+                            .map((medication) => (
+                              <option key={medication.atcCode} value={medication.atcCode}>
+                                {medication.name} - {medication.genericName} ({medication.atcCode})
+                              </option>
+                            ))}
+                        </select>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {selectedMedicationCategory 
+                            ? `Hold Ctrl/Cmd to select multiple. Selected: ${selectedMedications.length}/15`
+                            : 'Select a category first to see medications'
+                          }
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Selected Medications Preview */}
+                    {selectedMedications.length > 0 && (
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-2">
+                          Selected Medications ({selectedMedications.length})
+                        </h4>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedMedications.map((medication, index) => (
+                            <Badge key={index} variant="success">
+                              {medication}
+                              <button
+                                onClick={() => {
+                                  setSelectedMedications(prev => prev.filter(med => med !== medication));
+                                }}
+                                className="ml-2 text-green-700 hover:text-green-900"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </Card>
 
               {/* Specializations */}
@@ -492,7 +720,7 @@ const CaseDetails = () => {
             </div>
           )}
 
-          {/* Documents Tab */}
+          {/* Documents Tab - Keep existing implementation */}
           {activeTab === 'documents' && (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
