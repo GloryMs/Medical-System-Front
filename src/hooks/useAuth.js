@@ -218,14 +218,14 @@ export const useAuth = () => {
   // Get user's full name
   const getFullName = () => {
     if (!user) return '';
-    return `${user.firstName || ''} ${user.lastName || ''}`.trim();
+    return `${user.fullName}`.trim();
   };
 
   // Get user's initials
   const getInitials = () => {
     if (!user) return '';
-    const firstName = user.firstName || '';
-    const lastName = user.lastName || '';
+    const firstName = user.fullName || '';
+    const lastName = user.fullName || '';
     return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
   };
 

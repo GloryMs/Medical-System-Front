@@ -13,6 +13,7 @@ const authService = {
         id: response.userId,
         email: response.email,
         role: response.role,
+        fullName: response.fullName
       };
       localStorage.setItem('user', JSON.stringify(userData));
     }

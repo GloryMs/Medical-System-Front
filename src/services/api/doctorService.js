@@ -20,6 +20,23 @@ const doctorService = {
     return await api.upload('/doctor-service/api/doctors/profile/avatar', formData);
   },
 
+  // Get current availability status
+  getAvailabilityStatus: async () => {
+    return await api.get('/doctor-service/api/doctors/availability/status');
+  },
+
+  // Update availability with full settings
+  updateAvailability: async (availabilityData) => {
+    return await api.put('/doctor-service/api/doctors/availability', availabilityData);
+  },
+
+  // Quick toggle availability
+  toggleAvailability: async (isAvailable, reason = null) => {
+    const params = new URLSearchParams({ isAvailable });
+    if (reason) params.append('reason', reason);
+    return await api.post(`/doctor-service/api/doctors/availability/toggle?${params}`);
+  },
+
   // Credentials and Verification
   uploadCredentials: async (files) => {
     const formData = new FormData();
@@ -258,10 +275,6 @@ const doctorService = {
   // Dashboard Data
   getDashboardData: async () => {
     return await api.get('/doctor-service/api/doctors/dashboard');
-  },
-
-  getDashboardStats: async () => {
-    return await api.get('/doctor-service/api/doctors/dashboard/stats');
   },
 
   // Reviews and Ratings
