@@ -45,9 +45,11 @@ const Sidebar = ({ open, onClose, userRole, userId }) => {
       case 'DOCTOR':
         return [
           { name: 'Dashboard', href: '/app/doctor/dashboard', icon: Home },
+          { name: 'Assignments', href: '/app/doctor/assignments', icon: Home },
           { name: 'Cases', href: '/app/doctor/cases', icon: FileText },
           { name: 'Appointments', href: '/app/doctor/appointments', icon: Calendar },
           { name: 'Schedule', href: '/app/doctor/schedule', icon: Calendar },
+          { name: 'Notifications', href: '/app/doctor/notifications', icon: Bell },
           { name: 'Reports', href: '/app/doctor/reports', icon: FileText },
           { name: 'Earnings', href: '/app/doctor/earnings', icon: DollarSign },
           { name: 'Communication', href: '/app/doctor/communication', icon: MessageSquare },
