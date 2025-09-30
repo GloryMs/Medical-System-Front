@@ -58,10 +58,21 @@ const doctorService = {
     return await api.get('/doctor-service/api/doctors/verification-status');
   },
 
+  getCustomPatientInfo: async (caseId) => {
+    return await api.get(`/doctor-service/api/doctors/cases/${caseId}/patient/custom`);
+  },
+
   // Case Management
-  getAssignedCases: async (filters = {}) => {
-    const params = new URLSearchParams(filters);
-    return await api.get(`/doctor-service/api/doctors/cases?${params}`);
+  getAssignedCases: async () => {
+    return await api.get(`/doctor-service/api/doctors/cases/assigned`);
+  },
+
+  getActiveCases: async () => {
+    return await api.get(`/doctor-service/api/doctors/cases/active`);
+  },
+
+  setCaseFee: async (caseId, consultationFee) => {
+    return await api.post(`/doctor-service/api/doctors/cases/${caseId}/set-fee`, {consultationFee});
   },
 
   getCaseById: async (caseId) => {

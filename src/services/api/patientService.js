@@ -107,7 +107,7 @@ const patientService = {
         return;
       }
       
-      const response = await fetch(`http://172.16.1.122:8080/patient-service/api/files/${documentId}`, {
+      const response = await fetch(`http://172.16.1.122:8080/patient-service/api/files/${caseId}/${documentId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -169,7 +169,7 @@ const patientService = {
         return;
       }
       
-      const response = await fetch(`http://172.16.1.122:8080/patient-service/api/files/${documentId}`, {
+      const response = await fetch(`http://172.16.1.122:8080/patient-service/api/files/${caseId}/${documentId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,

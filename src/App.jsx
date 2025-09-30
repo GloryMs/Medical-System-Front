@@ -164,7 +164,7 @@ const AppContent = () => {
                 <Route path="dashboard" element={<DoctorDashboard />} />
                 <Route path="assignments" element={<DoctorNewAssignments/>}/>
                 <Route path="cases" element={<DoctorCasesManagement />} />
-                <Route path="cases/:id" element={<DoctorCaseDetails />} />
+                <Route path="cases/:caseId" element={<DoctorCaseDetails />} />
                 <Route path="appointments" element={<DoctorAppointments />} />
                 <Route path="notifications" element={<DoctorNotifications />} />
                 <Route path="schedule" element={<DoctorSchedule />} />
