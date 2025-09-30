@@ -31,13 +31,16 @@ import {
   MessageSquare,
   CalendarIcon,
   Edit,
-  RefreshCw
+  RefreshCw,
+  ExternalLink,
+  AlertCircle
 } from 'lucide-react';
 
+import Modal from '../../components/common/Modal';
+import DocumentViewerModal from '../../components/common/DocumentViewerModal';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Badge, { StatusBadge, PriorityBadge } from '../../components/common/Badge';
-import Modal from '../../components/common/Modal';
 import { useAuth } from '../../hooks/useAuth';
 import { useApi } from '../../hooks/useApi';
 import doctorService from '../../services/api/doctorService';
@@ -183,7 +186,7 @@ const DoctorCaseDetails = () => {
     }
   };
 
-  // View document in modal
+  // View document in modal with embedded viewer
   const handleViewDocument = async (document, index) => {
     setCurrentDocIndex(index);
     setCurrentDocument(document);
@@ -197,10 +200,46 @@ const DoctorCaseDetails = () => {
     }
     
     try {
-      // Use viewCaseDocument which opens in new tab (as per patientService implementation)
-      await patientService.viewCaseDocument(caseId, document.id);
+      console.log('Fetching document:', document.id);
+      
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const token = localStorage.getItem('accessToken');
+      
+      if (!user.id || !token) {
+        alert('Authentication required');
+        setLoadingDocument(false);
+        setShowDocumentViewer(false);
+        return;
+      }
+      
+      // Fetch the document blob
+      const response = await fetch(`http://172.16.1.122:8080/patient-service/api/files/${caseId}/${document.id}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'X-User-Id': user.id,
+          'Accept': '*/*'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const blob = await response.blob();
+      
+      if (blob.size === 0) {
+        console.error('Received empty blob');
+        alert('Received empty file from server');
+        setLoadingDocument(false);
+        return;
+      }
+      
+      // Create blob URL for viewing
+      const url = window.URL.createObjectURL(blob);
+      setDocumentPreviewUrl(url);
       setLoadingDocument(false);
-      setShowDocumentViewer(false);
+      
     } catch (error) {
       console.error('Failed to load document:', error);
       alert('Failed to load document preview');
@@ -212,7 +251,48 @@ const DoctorCaseDetails = () => {
   // Download document
   const handleDownloadDocument = async (document) => {
     try {
-      await patientService.downloadCaseDocument(caseId, document.id, document.fileName);
+      console.log('Downloading document:', document.id);
+      
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const token = localStorage.getItem('accessToken');
+      
+      if (!user.id || !token) {
+        alert('Authentication required');
+        return;
+      }
+      
+      const response = await fetch(`http://172.16.1.122:8080/patient-service/api/files/${caseId}/${document.id}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'X-User-Id': user.id,
+          'Accept': '*/*'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const blob = await response.blob();
+      
+      if (blob.size === 0) {
+        alert('Received empty file from server');
+        return;
+      }
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = document.fileName || `document_${document.id}`;
+      document.body.appendChild(link);
+      link.click();
+      
+      // Clean up
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
     } catch (error) {
       console.error('Failed to download document:', error);
       alert('Failed to download document');
@@ -262,6 +342,11 @@ const DoctorCaseDetails = () => {
       case 'ONCOLOGY': return <Activity className="w-5 h-5 text-orange-500" />;
       default: return <Stethoscope className="w-5 h-5 text-blue-500" />;
     }
+  };
+
+  // Check if doctor can schedule appointment (fees must be set first)
+  const canScheduleAppointment = () => {
+    return caseDetails && caseDetails.consultationFee && caseDetails.consultationFee > 0;
   };
 
   // Loading state
@@ -560,41 +645,124 @@ const DoctorCaseDetails = () => {
                 {/* Quick Actions */}
                 <Card title="Quick Actions">
                   <div className="space-y-2">
-                    {patientInfo && (
+                    {/* ACCEPTED Status Actions */}
+                    {caseDetails.status === 'ACCEPTED' && (
+                      <>
+                        {/* Update Case Fees - Only show if fees NOT set */}
+                        {(!caseDetails.consultationFee || caseDetails.consultationFee === 0) && (
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            className="w-full"
+                            icon={<DollarSign className="w-4 h-4" />}
+                            onClick={() => navigate(`/app/doctor/cases/${caseId}/update-fees`)}
+                          >
+                            Update Case Fees
+                          </Button>
+                        )}
+                        
+                        {/* Schedule Appointment - Only enabled if fees are set */}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          icon={<CalendarIcon className="w-4 h-4" />}
+                          onClick={() => navigate('/app/doctor/schedule', {
+                            state: { caseId: caseDetails.id }
+                          })}
+                          disabled={!canScheduleAppointment()}
+                          title={!canScheduleAppointment() ? "Set case fees first to schedule appointment" : ""}
+                        >
+                          Schedule Appointment
+                        </Button>
+                        
+                        {/* Warning message if fees not set */}
+                        {!canScheduleAppointment() && (
+                          <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                            <div className="flex items-start space-x-2">
+                              <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                              <p className="text-xs text-amber-800">
+                                Set consultation fees before scheduling an appointment
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {/* SCHEDULED Status Actions */}
+                    {caseDetails.status === 'SCHEDULED' && (
                       <Button
-                        variant="outline"
+                        variant="primary"
                         size="sm"
                         className="w-full"
-                        icon={<MessageSquare className="w-4 h-4" />}
-                        onClick={() => navigate('/app/doctor/communication', {
-                          state: { patientId: patientInfo.id, caseId: caseDetails.id }
+                        icon={<CalendarIcon className="w-4 h-4" />}
+                        onClick={() => navigate('/app/doctor/schedule', {
+                          state: { caseId: caseDetails.id, reschedule: true }
                         })}
                       >
-                        Message Patient
+                        Re-Schedule
                       </Button>
                     )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full"
-                      icon={<CalendarIcon className="w-4 h-4" />}
-                      onClick={() => navigate('/app/doctor/schedule', {
-                        state: { caseId: caseDetails.id }
-                      })}
-                    >
-                      Schedule Appointment
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full"
-                      icon={<Edit className="w-4 h-4" />}
-                      onClick={() => navigate(`/app/doctor/reports/create`, {
-                        state: { caseId: caseDetails.id }
-                      })}
-                    >
-                      Create Report
-                    </Button>
+
+                    {/* PAYMENT_PENDING Status - No Actions (View Details only in main content) */}
+                    {caseDetails.status === 'PAYMENT_PENDING' && (
+                      <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="flex items-start space-x-2">
+                          <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                          <p className="text-xs text-blue-800">
+                            Waiting for payment confirmation from patient
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* IN_PROGRESS Status Actions */}
+                    {caseDetails.status === 'IN_PROGRESS' && (
+                      <>
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          className="w-full"
+                          icon={<Edit className="w-4 h-4" />}
+                          onClick={() => navigate(`/app/doctor/reports/create`, {
+                            state: { caseId: caseDetails.id }
+                          })}
+                        >
+                          Update Case Report
+                        </Button>
+                        
+                        {patientInfo && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                            icon={<MessageSquare className="w-4 h-4" />}
+                            onClick={() => navigate('/app/doctor/communication', {
+                              state: { patientId: patientInfo.id, caseId: caseDetails.id }
+                            })}
+                          >
+                            Send Message to Patient
+                          </Button>
+                        )}
+                      </>
+                    )}
+
+                    {/* CONSULTATION_COMPLETE & CLOSED Status Actions */}
+                    {(caseDetails.status === 'CONSULTATION_COMPLETE' || caseDetails.status === 'CLOSED') && (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        className="w-full"
+                        icon={<FileText className="w-4 h-4" />}
+                        onClick={() => navigate('/app/doctor/reports', {
+                          state: { caseId: caseDetails.id }
+                        })}
+                      >
+                        View Case Report
+                      </Button>
+                    )}
+
                   </div>
                 </Card>
               </div>
@@ -920,34 +1088,32 @@ const DoctorCaseDetails = () => {
         )}
       </div>
 
-      {/* Document Viewer Modal */}
-      <Modal
+      {/* Document Viewer Modal - Full Screen with DocumentViewerModal */}
+      <DocumentViewerModal
         isOpen={showDocumentViewer}
         onClose={handleCloseViewer}
         title="Document Viewer"
-        size="full"
       >
-        <div className="relative bg-gray-50 rounded-lg" style={{ minHeight: '70vh' }}>
+        <div className="h-full flex flex-col p-3">
           {loadingDocument ? (
-            <div className="flex items-center justify-center h-full py-20">
+            <div className="flex items-center justify-center h-full">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                <p className="text-gray-600">Opening document...</p>
-                <p className="text-sm text-gray-500 mt-2">Document will open in a new window</p>
+                <p className="text-gray-600">Loading document...</p>
               </div>
             </div>
-          ) : currentDocument ? (
-            <div className="p-6">
-              {/* Document Info */}
-              <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
+          ) : currentDocument && documentPreviewUrl ? (
+            <>
+              {/* Document Info - Compact */}
+              <div className="bg-white rounded shadow-sm p-2 mb-2" style={{ flexShrink: 0 }}>
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-blue-50 rounded-lg">
+                  <div className="flex items-center space-x-2">
+                    <div className="p-1 bg-blue-50 rounded">
                       {getFileIcon(currentDocument.mimeType)}
                     </div>
                     <div>
-                      <h3 className="font-medium text-gray-900">{currentDocument.fileName}</h3>
-                      <p className="text-sm text-gray-500">
+                      <h3 className="font-medium text-gray-900 text-sm">{currentDocument.fileName}</h3>
+                      <p className="text-xs text-gray-500">
                         {formatFileSize(currentDocument.fileSizeKB)} • {currentDocument.mimeType}
                       </p>
                     </div>
@@ -955,7 +1121,7 @@ const DoctorCaseDetails = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    icon={<Download className="w-4 h-4" />}
+                    icon={<Download className="w-3 h-3" />}
                     onClick={() => handleDownloadDocument(currentDocument)}
                   >
                     Download
@@ -963,57 +1129,93 @@ const DoctorCaseDetails = () => {
                 </div>
               </div>
 
-              {/* Navigation Controls */}
-              <div className="bg-white rounded-lg shadow-sm p-4">
-                <div className="flex items-center justify-between">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    icon={<ChevronLeft className="w-5 h-5" />}
-                    onClick={handlePrevDocument}
-                    disabled={currentDocIndex === 0}
-                  >
-                    Previous
-                  </Button>
-                  
+              {/* Document Preview Area - Takes maximum space */}
+              <div style={{ 
+                flex: 1,
+                backgroundColor: '#f3f4f6',
+                borderRadius: '8px',
+                border: '1px solid #e5e7eb',
+                overflow: 'hidden',
+                minHeight: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '8px'
+              }}>
+                {currentDocument.mimeType.startsWith('image/') ? (
+                  <img
+                    src={documentPreviewUrl}
+                    alt={currentDocument.fileName}
+                    style={{ 
+                      maxHeight: '100%', 
+                      maxWidth: '100%', 
+                      objectFit: 'contain',
+                      display: 'block'
+                    }}
+                  />
+                ) : currentDocument.mimeType === 'application/pdf' ? (
+                  <iframe
+                    src={documentPreviewUrl}
+                    className="w-full h-full"
+                    title={currentDocument.fileName}
+                    style={{ border: 'none' }}
+                  />
+                ) : (
                   <div className="text-center">
-                    <p className="text-sm font-medium text-gray-700">
-                      Document {currentDocIndex + 1} of {attachments.length}
+                    <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600 mb-4">
+                      Preview not available for this file type
                     </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Navigate using the buttons or click on documents in the Documents tab
+                    <p className="text-sm text-gray-500 mb-4">
+                      File type: {currentDocument.mimeType}
                     </p>
+                    <Button
+                      variant="primary"
+                      icon={<Download className="w-4 h-4" />}
+                      onClick={() => handleDownloadDocument(currentDocument)}
+                    >
+                      Download File
+                    </Button>
                   </div>
-                  
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    icon={<ChevronRight className="w-5 h-5" />}
-                    onClick={handleNextDocument}
-                    disabled={currentDocIndex === attachments.length - 1}
-                  >
-                    Next
-                  </Button>
-                </div>
+                )}
               </div>
 
-              {/* Info Message */}
-              <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <div className="flex items-start space-x-3">
-                  <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                  <div className="text-sm text-blue-800">
-                    <p className="font-medium">Document opened in new window</p>
-                    <p className="mt-1">
-                      If the document didn't open, please check your popup blocker settings. 
-                      You can also download the document using the Download button.
-                    </p>
+              {/* Navigation Controls - Compact */}
+              {attachments.length > 1 && (
+                <div className="bg-white rounded shadow-sm p-2 mt-2" style={{ flexShrink: 0 }}>
+                  <div className="flex items-center justify-between">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      icon={<ChevronLeft className="w-4 h-4" />}
+                      onClick={handlePrevDocument}
+                      disabled={currentDocIndex === 0}
+                    >
+                      Previous
+                    </Button>
+                    
+                    <div className="text-center">
+                      <p className="text-xs font-medium text-gray-700">
+                        Document {currentDocIndex + 1} of {attachments.length}
+                      </p>
+                    </div>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      icon={<ChevronRight className="w-4 h-4" />}
+                      onClick={handleNextDocument}
+                      disabled={currentDocIndex === attachments.length - 1}
+                    >
+                      Next
+                    </Button>
                   </div>
                 </div>
-              </div>
-            </div>
+              )}
+            </>
           ) : null}
         </div>
-      </Modal>
+      </DocumentViewerModal>
     </div>
   );
 };
