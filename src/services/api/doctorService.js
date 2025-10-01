@@ -124,12 +124,33 @@ const doctorService = {
     return await api.post(`/doctor-service/api/doctors/appointments/${appointmentId}/cancel`, { reason });
   },
 
-  rescheduleAppointment: async (appointmentId, newDateTime, reason) => {
-    return await api.post(`/doctor-service/api/doctors/appointments/${appointmentId}/reschedule`, {
-      newDateTime,
-      reason
-    });
+  // completeAppointment: async (appointmentId) => {
+  //   return await api.put(`/doctor-service/api/doctors/appointments/${appointmentId}/complete`);
+  // },  
+
+  completeAppointment: async (completeDto) => {
+  // completeDto: { appointmentId, caseId, patientId }
+    return await api.put('/doctor-service/api/doctors/appointments/complete', completeDto);
   },
+
+
+  rescheduleAppointment: async (appointmentId, rescheduleData) => {
+    return await api.put(`/doctor-service/api/doctors/appointments/${appointmentId}/reschedule`, rescheduleData);
+  },
+
+
+  // Available time slots - NEW
+  getAvailableTimeSlots: async (date, duration = 30) => {
+    const params = new URLSearchParams({ date, duration });
+    return await api.get(`/doctor-service/api/doctors/appointments/available-slots?${params}`);
+  },
+
+  checkSlotAvailability: async (scheduledTime, duration = 30) => {
+    const params = new URLSearchParams({ scheduledTime, duration });
+    return await api.get(`/doctor-service/api/doctors/appointments/check-availability?${params}`);
+  },
+
+
 
   // Schedule Management
   getSchedule: async (startDate, endDate) => {
@@ -362,22 +383,23 @@ const doctorService = {
   },
 
   // Notifications
-  getNotifications: async (filters = {}) => {
+
+  getNotifications: async (userId, filters = {}) => {
     const params = new URLSearchParams(filters);
-    return await api.get(`/doctor-service/api/doctors/notifications?${params}`);
+    return await api.get(`/doctor-service/api/doctors/notifications/${userId}`);
   },
 
-  markNotificationAsRead: async (notificationId) => {
-    return await api.post(`/doctor-service/api/doctors/notifications/${notificationId}/read`);
+  markNotificationAsRead: async (notificationId, userId) => {
+  return await api.put(`/doctor-service/api/doctors/notifications/${notificationId}/${userId}/read?`);
   },
 
-  markAllNotificationsAsRead: async () => {
-    return await api.post('/doctor-service/api/doctors/notifications/read-all');
+  markAllNotificationsAsRead: async (userId) => {
+    return await api.put(`/doctor-service/api/doctors/notifications/${userId}/read-all`);
   },
 
-  updateNotificationSettings: async (settings) => {
-    return await api.put('/doctor-service/api/doctors/notifications/settings', settings);
-  },
+  // updateNotificationSettings: async (settings) => {
+  //   return await api.put('/doctor-service/api/doctors/notifications/settings', settings);
+  // },
 
   // Analytics
   getAnalytics: async (period = 'month') => {

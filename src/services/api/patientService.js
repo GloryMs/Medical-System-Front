@@ -485,7 +485,7 @@ const patientService = {
 
   markNotificationAsRead: async (notificationId, userId) => {
   return await api.put(`/patient-service/api/patients/notifications/${notificationId}/${userId}/read?`);
-},
+  },
 
   markAllNotificationsAsRead: async (userId) => {
     return await api.put(`/patient-service/api/patients/notifications/${userId}/read-all`);
