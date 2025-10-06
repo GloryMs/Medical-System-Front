@@ -43,14 +43,16 @@ import DoctorCasesManagement from './pages/doctor/DoctorCasesManagement';
 import DoctorCaseDetails from './pages/doctor/DoctorCaseDetails';
 import DoctorAppointments from './pages/doctor/DoctorAppointments';
 import DoctorSchedule from './pages/doctor/DoctorSchedule';
-import ConsultationReports from './pages/doctor/ConsultationReports';
-import CreateReport from './pages/doctor/CreateReport';
 import DoctorProfile from './pages/doctor/DoctorProfile';
 import DoctorEarnings from './pages/doctor/DoctorEarnings';
 import PatientCommunication from './pages/doctor/PatientCommunication';
 import DoctorSettings from './pages/doctor/DoctorSettings';
 import DoctorNotifications from './pages/doctor/DoctorNotifications';
 import DoctorNewAssignments from './pages/doctor/DoctorNewAssignments';
+import ReportsListPage from './pages/doctor/ReportsListPage';
+import CreateReport from './pages/doctor/CreateReport';
+import EditReport from './pages/doctor/EditReport';
+import ViewReport from './pages/doctor/ViewReport';
 
 //Admin Pages
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -168,12 +170,14 @@ const AppContent = () => {
                 <Route path="appointments" element={<DoctorAppointments />} />
                 <Route path="notifications" element={<DoctorNotifications />} />
                 <Route path="schedule" element={<DoctorSchedule />} />
-                <Route path="reports" element={<ConsultationReports />} />
-                <Route path="reports/create" element={<CreateReport />} />
                 <Route path="profile" element={<DoctorProfile />} />
                 <Route path="earnings" element={<DoctorEarnings />} />
                 <Route path="communication" element={<PatientCommunication />} />
                 <Route path="settings" element={<DoctorSettings />} />
+                <Route path="reports" element={<ReportsListPage />} />
+                <Route path="reports/create" element={<CreateReport />} />
+                <Route path="reports/:reportId" element={<ViewReport />} />
+                <Route path="reports/:reportId/edit" element={<EditReport />} />
               </Routes>
             </ProtectedRoute>
           } />

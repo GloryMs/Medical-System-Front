@@ -179,30 +179,157 @@ const doctorService = {
   },
 
   // Consultation Reports
-  getConsultationReports: async (filters = {}) => {
-    const params = new URLSearchParams(filters);
+
+  /**
+   * Get all consultation reports with optional status filter
+   * @param {string} status - Optional: 'DRAFT' or 'FINALIZED' or null for all
+   */
+  getConsultationReports: async (status = null) => {
+    const params = status ? new URLSearchParams({ status }) : '';
     return await api.get(`/doctor-service/api/doctors/consultation-reports?${params}`);
   },
 
+  /**
+   * Get single consultation report by ID
+   * @param {number} reportId - The report ID
+   */
   getConsultationReportById: async (reportId) => {
     return await api.get(`/doctor-service/api/doctors/consultation-reports/${reportId}`);
   },
 
+  /**
+   * Create new consultation report (DRAFT status)
+   * @param {object} reportData - Report data
+   * @param {number} reportData.appointmentId - Appointment ID (required)
+   * @param {number} reportData.caseId - Case ID (required)
+   * @param {string} reportData.diagnosis - Diagnosis text
+   * @param {string} reportData.recommendations - Recommendations
+   * @param {string} reportData.prescriptions - Prescriptions
+   * @param {string} reportData.followUpInstructions - Follow-up instructions
+   * @param {boolean} reportData.requiresFollowUp - Whether follow-up is needed
+   * @param {string} reportData.nextAppointmentSuggested - ISO date string
+   * @param {string} reportData.doctorNotes - Private doctor notes
+   */
   createConsultationReport: async (reportData) => {
-    return await api.post('/doctor-service/api/doctors/consultation-reports', reportData);
+    return await api.post('/doctor-service/api/doctors/consultation-reports/create', reportData);
   },
 
+  /**
+   * Update consultation report (only DRAFT reports)
+   * @param {number} reportId - The report ID
+   * @param {object} reportData - Updated report data
+   */
   updateConsultationReport: async (reportId, reportData) => {
     return await api.put(`/doctor-service/api/doctors/consultation-reports/${reportId}`, reportData);
   },
 
+  /**
+   * Export report to PDF (finalizes the report)
+   * @param {number} reportId - The report ID
+   */
+  exportReportToPdf: async (reportId) => {
+    return await api.post(`/doctor-service/api/doctors/consultation-reports/${reportId}/export`);
+  },
+
+  /**
+   * Delete consultation report (only DRAFT reports)
+   * @param {number} reportId - The report ID
+   */
   deleteConsultationReport: async (reportId) => {
     return await api.delete(`/doctor-service/api/doctors/consultation-reports/${reportId}`);
   },
 
-  submitFinalReport: async (reportId) => {
-    return await api.post(`/doctor-service/api/doctors/consultation-reports/${reportId}/submit`);
+  // ========== HELPER METHODS ==========
+
+  /**
+   * Download PDF report
+   * @param {string} pdfUrl - The PDF file URL
+   */
+  downloadPdf: (pdfUrl) => {
+    window.open(pdfUrl, '_blank');
   },
+
+  /**
+   * Check if report can be edited
+   * @param {object} report - The report object
+   */
+  canEditReport: (report) => {
+    return report && report.status === 'DRAFT';
+  },
+
+  /**
+   * Check if report can be exported
+   * @param {object} report - The report object
+   */
+  canExportReport: (report) => {
+    return report && report.status === 'DRAFT' && 
+           report.diagnosis && report.recommendations && report.prescriptions;
+  },
+
+  /**
+   * Format report for display
+   * @param {object} report - The report object
+   */
+  formatReport: (report) => {
+    return {
+      ...report,
+      createdAtFormatted: report.createdAt ? new Date(report.createdAt).toLocaleDateString() : 'N/A',
+      updatedAtFormatted: report.updatedAt ? new Date(report.updatedAt).toLocaleDateString() : 'N/A',
+      exportedAtFormatted: report.exportedAt ? new Date(report.exportedAt).toLocaleDateString() : 'N/A',
+      isDraft: report.status === 'DRAFT',
+      isFinalized: report.status === 'FINALIZED',
+      hasPdf: Boolean(report.pdfFileLink)
+    };
+  },
+
+
+  // getConsultationReports: async (filters = {}) => {
+  //   const params = new URLSearchParams(filters);
+  //   return await api.get(`/doctor-service/api/doctors/consultation-reports?${params}`);
+  // },
+
+  // getConsultationReportById: async (reportId) => {
+  //   return await api.get(`/doctor-service/api/doctors/consultation-reports/${reportId}`);
+  // },
+
+  // createConsultationReport: async (reportData) => {
+  //   return await api.post('/doctor-service/api/doctors/consultation-reports', reportData);
+  // },
+
+  // // updateConsultationReport: async (reportId, reportData) => {
+  // //   return await api.put(`/doctor-service/api/doctors/consultation-reports/${reportId}`, reportData);
+  // // },
+
+  // deleteConsultationReport: async (reportId) => {
+  //   return await api.delete(`/doctor-service/api/doctors/consultation-reports/${reportId}`);
+  // },
+
+  // submitFinalReport: async (reportId) => {
+  //   return await api.post(`/doctor-service/api/doctors/consultation-reports/${reportId}/submit`);
+  // },
+
+
+  // getConsultationReports: async (status = null) => {
+  //   const params = status ? new URLSearchParams({ status }) : '';
+  //   return await api.get(`/doctor-service/api/doctors/consultation-reports?${params}`);
+  // },
+  
+  // // NEW: Get single report
+  // getConsultationReportById: async (reportId) => {
+  //   return await api.get(`/doctor-service/api/doctors/consultation-reports/${reportId}`);
+  // },
+  
+  // // NEW: Export to PDF
+  // exportReportToPdf: async (reportId) => {
+  //   return await api.post(`/doctor-service/api/doctors/consultation-reports/${reportId}/export`);
+  // },
+  
+  // // Updated update method
+  // updateConsultationReport: async (reportId, reportData) => {
+  //   return await api.put(`/doctor-service/api/doctors/consultation-reports/${reportId}`, reportData);
+  // },
+
+
 
   // Prescriptions
   createPrescription: async (prescriptionData) => {

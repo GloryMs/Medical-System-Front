@@ -335,13 +335,12 @@ const PatientAppointments = () => {
       try {
         // First process the payment with correct ProcessPaymentDto structure
         await execute(() => patientService.payConsultationFee(
-          selectedAppointment.caseId,
           {
             patientId: user.id, // Current logged-in patient ID
             doctorId: selectedAppointment.doctor?.id || selectedAppointment.doctor.userId, // Doctor's ID
             caseId: selectedAppointment.caseId,
             paymentType: 'CONSULTATION', // PaymentType enum value
-            amount: selectedAppointment.doctor?.caseRate || selectedAppointment.consultationFee,
+            amount: selectedAppointment.consultationFee || selectedAppointment.doctor?.caseRate ,
             paymentMethod: selectedPaymentMethod // This should be the payment method code (e.g., 'CREDIT_CARD', 'PAYPAL', etc.)
           }
         ));
@@ -722,7 +721,7 @@ const PatientAppointments = () => {
                             <div className="flex items-center space-x-2">
                               <DollarSign className="w-4 h-4 text-primary-500" />
                               <span className="text-sm font-bold text-primary-600 bg-primary-50 px-2 py-1 rounded">
-                                ${appointment.doctor?.caseRate || 'N/A'}
+                                ${appointment.consultationFee || appointment.doctor?.caseRate || 'N/A'}
                               </span>
                               <FileText className="w-4 h-4 text-primary-500 ml-2" />
                               <span className="text-sm text-gray-600">
@@ -737,14 +736,14 @@ const PatientAppointments = () => {
                               </span>
                             </div>
                             
-                            {appointment.consultationFee && (
+                            {/* {appointment.consultationFee && (
                               <div className="flex items-center space-x-2">
                                 <DollarSign className="w-4 h-4 text-purple-500" />
                                 <span className="text-sm text-gray-600">
                                   ${appointment.consultationFee}
                                 </span>
                               </div>
-                            )}
+                            )} */}
                           </div>
 
                           {/* Additional Details (Expandable) - Updated Doctor Information */}
@@ -1037,8 +1036,8 @@ const PatientAppointments = () => {
               >
                 <option value="">Select payment method</option>
                 {paymentMethods.map(method => (
-                  <option key={method.id} value={method.value}>
-                    {method.displayName}
+                  <option key={method.code} value={method.name}>
+                    {method.name}
                   </option>
                 ))}
               </select>

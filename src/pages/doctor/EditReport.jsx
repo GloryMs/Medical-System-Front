@@ -1,31 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { 
   Save, 
   ArrowLeft, 
   AlertCircle, 
   CheckCircle,
-  FileText,
-  Calendar,
-  User
+  Lock,
+  Edit
 } from 'lucide-react';
 import doctorService from '../../services/api/doctorService';
 
-const CreateReport = () => {
+const EditReport = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  
-  // Get case/appointment info from navigation state
-  const { caseId, appointmentId, patientId, caseTitle } = location.state || {};
+  const { reportId } = useParams();
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [validationErrors, setValidationErrors] = useState({});
+  const [report, setReport] = useState(null);
 
   const [formData, setFormData] = useState({
-    appointmentId: appointmentId || '',
-    caseId: caseId || '',
     diagnosis: '',
     recommendations: '',
     prescriptions: '',
@@ -36,11 +32,49 @@ const CreateReport = () => {
   });
 
   useEffect(() => {
-    // Validate that we have the required data
-    if (!caseId || !appointmentId) {
-      setError('Missing required information. Please select a case and appointment first.');
+    if (reportId) {
+      fetchReport();
     }
-  }, [caseId, appointmentId]);
+  }, [reportId]);
+
+  const fetchReport = async () => {
+    setLoading(true);
+    setError('');
+    
+    try {
+      const response = await doctorService.getConsultationReportById(reportId);
+
+        const reportData = response;
+        setReport(reportData);
+
+        // Check if report is finalized
+        if (reportData.status === 'FINALIZED') {
+          setError('This report has been finalized and cannot be edited. You can view it in read-only mode.');
+          setTimeout(() => {
+            navigate(`/app/doctor/reports/${reportId}`);
+          }, 3000);
+          return;
+        }
+
+        // Populate form
+        setFormData({
+          diagnosis: reportData.diagnosis || '',
+          recommendations: reportData.recommendations || '',
+          prescriptions: reportData.prescriptions || '',
+          followUpInstructions: reportData.followUpInstructions || '',
+          requiresFollowUp: reportData.requiresFollowUp || false,
+          nextAppointmentSuggested: reportData.nextAppointmentSuggested 
+            ? new Date(reportData.nextAppointmentSuggested).toISOString().slice(0, 16)
+            : '',
+          doctorNotes: reportData.doctorNotes || ''
+        });
+    } catch (err) {
+      console.error('Error fetching report:', err);
+      setError('Failed to load report. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -61,15 +95,6 @@ const CreateReport = () => {
   const validateForm = () => {
     const errors = {};
 
-    if (!formData.appointmentId) {
-      errors.appointmentId = 'Appointment ID is required';
-    }
-    if (!formData.caseId) {
-      errors.caseId = 'Case ID is required';
-    }
-    if (!formData.diagnosis || formData.diagnosis.trim().length === 0) {
-      errors.diagnosis = 'Diagnosis is required';
-    }
     if (formData.diagnosis && formData.diagnosis.length > 5000) {
       errors.diagnosis = 'Diagnosis cannot exceed 5000 characters';
     }
@@ -96,39 +121,41 @@ const CreateReport = () => {
     setSuccess('');
 
     if (!validateForm()) {
-      setError('Please fix the validation errors before submitting.');
+      setError('Please fix the validation errors before saving.');
       return;
     }
 
-    setLoading(true);
+    setSaving(true);
 
     try {
-      // Prepare data for submission
-      const submitData = {
-        ...formData,
-        appointmentId: parseInt(formData.appointmentId),
-        caseId: parseInt(formData.caseId),
+      const updateData = {
+        diagnosis: formData.diagnosis,
+        recommendations: formData.recommendations,
+        prescriptions: formData.prescriptions,
+        followUpInstructions: formData.followUpInstructions,
+        requiresFollowUp: formData.requiresFollowUp,
         nextAppointmentSuggested: formData.nextAppointmentSuggested 
           ? new Date(formData.nextAppointmentSuggested).toISOString()
-          : null
+          : null,
+        doctorNotes: formData.doctorNotes
       };
 
-      const response = await doctorService.createConsultationReport(submitData);
+      const response = await doctorService.updateConsultationReport(reportId, updateData);
 
-      if (response.success) {
-        setSuccess('Consultation report created successfully as DRAFT!');
+      if (response.data?.success) {
+        setSuccess('Report updated successfully!');
         setTimeout(() => {
           navigate('/app/doctor/reports');
         }, 2000);
       }
     } catch (err) {
-      console.error('Error creating report:', err);
+      console.error('Error updating report:', err);
       setError(
         err.response?.data?.message || 
-        'Failed to create report. Please ensure the case status is CONSULTATION_COMPLETED and try again.'
+        'Failed to update report. The report may have been finalized.'
       );
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -137,6 +164,30 @@ const CreateReport = () => {
       navigate('/app/doctor/reports');
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading report...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!report) {
+    return (
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="bg-red-50 border-l-4 border-red-500 p-4">
+          <div className="flex items-center">
+            <AlertCircle className="text-red-500 w-5 h-5 mr-3" />
+            <p className="text-red-700">Report not found or you don't have permission to edit it.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto p-6">
@@ -149,22 +200,25 @@ const CreateReport = () => {
           <ArrowLeft className="w-5 h-5" />
           Back to Reports
         </button>
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Consultation Report</h1>
-        <p className="text-gray-600">Fill in the consultation details to create a new medical report</p>
+        <div className="flex items-center gap-3">
+          <Edit className="w-8 h-8 text-blue-600" />
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Edit Consultation Report</h1>
+            <p className="text-gray-600">Report ID: #{reportId} • Case ID: #{report.caseId}</p>
+          </div>
+        </div>
       </div>
 
-      {/* Case Info Card */}
-      {caseId && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-          <div className="flex items-start gap-3">
-            <FileText className="w-5 h-5 text-blue-600 mt-0.5" />
+      {/* Status Warning */}
+      {report.status === 'FINALIZED' && (
+        <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-6">
+          <div className="flex items-center">
+            <Lock className="text-yellow-500 w-5 h-5 mr-3" />
             <div>
-              <p className="font-semibold text-gray-900 mb-1">Case Information</p>
-              <div className="text-sm text-gray-700 space-y-1">
-                <p>Case ID: #{caseId}</p>
-                {caseTitle && <p>Title: {caseTitle}</p>}
-                {appointmentId && <p>Appointment ID: #{appointmentId}</p>}
-              </div>
+              <p className="font-semibold text-yellow-800">Report Finalized</p>
+              <p className="text-yellow-700 text-sm">
+                This report has been exported to PDF and is now locked for editing.
+              </p>
             </div>
           </div>
         </div>
@@ -197,7 +251,7 @@ const CreateReport = () => {
           {/* Diagnosis */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Diagnosis <span className="text-red-500">*</span>
+              Diagnosis
             </label>
             <textarea
               name="diagnosis"
@@ -220,14 +274,14 @@ const CreateReport = () => {
           {/* Prescriptions */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Prescriptions <span className="text-red-500">*</span>
+              Prescriptions
             </label>
             <textarea
               name="prescriptions"
               value={formData.prescriptions}
               onChange={handleChange}
               rows={5}
-              placeholder="List medications, dosages, and instructions (or enter 'None' if not applicable)..."
+              placeholder="List medications, dosages, and instructions..."
               className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                 validationErrors.prescriptions ? 'border-red-500' : 'border-gray-300'
               }`}
@@ -243,14 +297,14 @@ const CreateReport = () => {
           {/* Recommendations */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Medical Recommendations <span className="text-red-500">*</span>
+              Medical Recommendations
             </label>
             <textarea
               name="recommendations"
               value={formData.recommendations}
               onChange={handleChange}
               rows={5}
-              placeholder="Enter treatment recommendations, lifestyle modifications, and care instructions..."
+              placeholder="Enter treatment recommendations and care instructions..."
               className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                 validationErrors.recommendations ? 'border-red-500' : 'border-gray-300'
               }`}
@@ -331,7 +385,7 @@ const CreateReport = () => {
               value={formData.doctorNotes}
               onChange={handleChange}
               rows={6}
-              placeholder="Add any additional notes, observations, or comments for your records..."
+              placeholder="Add any additional notes or updates..."
               className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                 validationErrors.doctorNotes ? 'border-red-500' : 'border-gray-300'
               }`}
@@ -342,6 +396,9 @@ const CreateReport = () => {
             <p className="mt-1 text-xs text-gray-500">
               {formData.doctorNotes.length} / 10000 characters
             </p>
+            <p className="mt-2 text-xs text-blue-600">
+              Note: New notes will be appended with a timestamp to existing notes
+            </p>
           </div>
 
         </div>
@@ -349,50 +406,39 @@ const CreateReport = () => {
         {/* Form Actions */}
         <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex items-center justify-between">
           <div className="text-sm text-gray-600">
-            <span className="text-red-500">*</span> Required fields
+            Last updated: {report.updatedAt ? new Date(report.updatedAt).toLocaleString() : 'N/A'}
           </div>
           <div className="flex gap-3">
             <button
               type="button"
               onClick={handleCancel}
               className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-              disabled={loading}
+              disabled={saving}
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={loading || !caseId || !appointmentId}
+              disabled={saving || report.status === 'FINALIZED'}
               className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? (
+              {saving ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  Creating...
+                  Saving...
                 </>
               ) : (
                 <>
                   <Save className="w-4 h-4" />
-                  Create Report (Draft)
+                  Save Changes
                 </>
               )}
             </button>
           </div>
         </div>
       </form>
-
-      {/* Info Box */}
-      <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h3 className="font-semibold text-blue-900 mb-2">📝 Note:</h3>
-        <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
-          <li>The report will be saved as a DRAFT and can be edited later</li>
-          <li>You can export the report to PDF once all required fields are complete</li>
-          <li>After exporting to PDF, the report becomes finalized and cannot be edited</li>
-          <li>Case must be in CONSULTATION_COMPLETED status to create a report</li>
-        </ul>
-      </div>
     </div>
   );
 };
 
-export default CreateReport;
+export default EditReport;

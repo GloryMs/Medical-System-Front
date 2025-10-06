@@ -433,8 +433,8 @@ const patientService = {
   },
 
   // Consultation Fee Payment
-  payConsultationFee: async (caseId, paymentData) => {
-    return await api.post(`/patient-service/api/patients/cases/${caseId}/pay`, paymentData);
+  payConsultationFee: async (paymentData) => {
+    return await api.post(`/patient-service/api/patients/cases/pay`, paymentData);
   },
 
   getConsultationFeeStatus: async (caseId) => {
