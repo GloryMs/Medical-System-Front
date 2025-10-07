@@ -157,6 +157,69 @@ const patientService = {
     }
   },
 
+  viewMedicalReport: async (medicalReportFileLink) => {
+    try {
+      console.log('Making request to view document:', medicalReportFileLink);
+      
+      // Make request with proper headers for raw binary data
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const token = localStorage.getItem('accessToken');
+      
+      if (!user.id || !token) {
+        alert('Authentication required');
+        return;
+      }
+      
+      const response = await fetch(medicalReportFileLink, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'X-User-Id': user.id,
+          'Accept': '*/*'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      // Get the blob directly from the fetch response
+      const blob = await response.blob();
+      console.log('Received blob size:', blob.size);
+      console.log('Blob type:', blob.type);
+      
+      if (blob.size === 0) {
+        console.error('Received empty blob');
+        alert('Received empty file from server');
+        return;
+      }
+      
+      // Create URL and open
+      const url = window.URL.createObjectURL(blob);
+      const newWindow = window.open(url, '_blank');
+      
+      if (!newWindow) {
+        // Fallback for popup blockers
+        const link = document.createElement('a');
+        link.href = url;
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+      
+      // Clean up after delay
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+      }, 15000);
+      
+    } catch (error) {
+      console.error('Failed to view document:', error);
+      alert('Failed to view document. Please try again.');
+      throw error;
+    }
+  },
+
   downloadCaseDocument: async (caseId, documentId, filename) => {
     try {
       console.log('Making request to download document:', documentId);

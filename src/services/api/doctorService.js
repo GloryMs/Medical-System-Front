@@ -243,6 +243,11 @@ const doctorService = {
     return await api.delete(`/doctor-service/api/doctors/consultation-reports/${reportId}`);
   },
 
+    // NEW METHOD: Get case details for creating medical report
+  getCaseDetailsForMedicalReport: async (caseId) => {
+    return await api.get(`/doctor-service/api/doctors/consultation-reports/${caseId}/custom-case`);
+  },
+
   // ========== HELPER METHODS ==========
 
   /**

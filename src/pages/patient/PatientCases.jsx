@@ -84,6 +84,15 @@ const PatientCases = () => {
     setFilteredCases(filtered);
   };
 
+  const handleViewMedicalReport = async (medicalReportFileLink) => {
+      try {
+        await patientService.viewMedicalReport(medicalReportFileLink);
+      } catch (error) {
+        console.error('Failed to view medical report:', error);
+        alert('Failed to view medical report:. Please try again.');
+      }
+  };
+
   const handleDeleteCase = async () => {
     if (!selectedCase) return;
     
@@ -312,6 +321,17 @@ const PatientCases = () => {
                         onClick={() => navigate(`/patient/cases/${case_.id}/edit`)}
                       >
                         Edit
+                      </Button>
+                    )}
+
+                    {case_.status === 'CLOSED' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        icon={<FileText className="w-4 h-4" />}
+                        onClick={() => handleViewMedicalReport(case_.medicalReportFileLink)}
+                      >
+                        View Medical Report
                       </Button>
                     )}
 

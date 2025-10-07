@@ -139,7 +139,7 @@ const DoctorCaseDetails = () => {
     try {
       setRefreshing(true);
       
-      // Get active cases and find the specific case
+      // Get all cases and find the specific case
       const activeCases = await execute(() => doctorService.getAllCasses());
       
       // Find the case by ID

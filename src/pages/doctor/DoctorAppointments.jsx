@@ -307,13 +307,16 @@ const DoctorAppointments = () => {
       setShowCompleteConfirmModal(false);
       setSelectedAppointment(null);
       
-      navigate(`/app/doctor/reports/create`, {
-        state: {
-          appointmentId: appointment.id,
-          caseId: appointment.caseId,
-          patientId: appointment.patientId
-        }
-      });
+      // navigate(`/app/doctor/reports/create`, {
+      //   state: {
+      //     appointmentId: appointment.id,
+      //     caseId: appointment.caseId,
+      //     patientId: appointment.patientId
+      //   }
+      // });
+
+      navigate(`/app/doctor/reports/create?caseId=${appointment.caseId}`);
+
     } catch (error) {
       console.error('Failed to complete appointment:', error);
     }

@@ -243,6 +243,15 @@ const CaseDetails = () => {
     }
   };
 
+    const handleViewMedicalReport = async (medicalReportFileLink) => {
+    try {
+      await patientService.viewMedicalReport(medicalReportFileLink);
+    } catch (error) {
+      console.error('Failed to view medical report:', error);
+      alert('Failed to view medical report:. Please try again.');
+    }
+  };
+
   const handleDownloadDocument = async (doc) => {
     try {
       await patientService.downloadCaseDocument(caseId, doc.id, doc.fileName);
@@ -492,6 +501,15 @@ const CaseDetails = () => {
                       onClick={() => setActiveTab('documents')}
                     >
                       View Documents ({caseData.documents?.length || 0})
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      icon={<FileText className="w-4 h-4" />}
+                      fullWidth
+                      disabled={!['CLOSED'].includes(caseData.status)}
+                      onClick={() => handleViewMedicalReport(caseData.medicalReportFileLink)}
+                    >
+                      View Medical Report
                     </Button>
                   </div>
                 </Card>
