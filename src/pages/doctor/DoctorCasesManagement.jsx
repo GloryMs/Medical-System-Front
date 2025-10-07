@@ -190,7 +190,7 @@ const DoctorCasesManagement = () => {
   const loadActiveCases = async () => {
     try {
       setRefreshing(true);
-      const response = await execute(() => doctorService.getActiveCases());
+      const response = await execute(() => doctorService.getAllCasses());
       
       setCases(response || []);
       calculateStats(response || []);
@@ -282,6 +282,14 @@ const DoctorCasesManagement = () => {
     setFilteredCases(filtered);
   }, [cases, searchTerm, sortBy, statusFilter, urgencyFilter, specializationFilter]);
 
+  const handleViewPdf = (case_) => {
+    if (case_.medicalReportFileLink) {
+      // Open PDF in new tab for viewing
+      const pdfLin = case_.medicalReportFileLink.replace('/api/files/reports/', '/api/files/reports/serve/');
+      window.open(pdfLin, '_blank');
+    }
+  };
+
   // Handle case fee update
   const handleUpdateFee = async (data) => {
     try {
@@ -362,17 +370,19 @@ const DoctorCasesManagement = () => {
     // TODO: Backend API needed - Check if report exists for this case
     // If report exists, navigate to edit; otherwise navigate to create
     
-    if (case_.reportId) {
-      navigate(`/app/doctor/reports/${case_.reportId}/edit`);
-    } else {
-      navigate(`/app/doctor/reports/create`, {
-        state: { 
-          caseId: case_.id, 
-          patientId: case_.patientId, 
-          caseTitle: case_.caseTitle 
-        }
-      });
-    }
+    navigate(`/app/doctor/reports`);
+
+    // if (case_.reportId) {
+    //   navigate(`/app/doctor/reports`);
+    // } else {
+    //   navigate(`/app/doctor/reports/create`, {
+    //     state: { 
+    //       caseId: case_.id, 
+    //       patientId: case_.patientId, 
+    //       caseTitle: case_.caseTitle 
+    //     }
+    //   });
+    // }
   };
 
   // Send message to patient
@@ -488,12 +498,12 @@ const DoctorCasesManagement = () => {
 
       case 'IN_PROGRESS':
         actions.push(
-          {
-            label: 'Update Report',
-            icon: FileEdit,
-            variant: 'primary',
-            onClick: () => handleUpdateReport(case_)
-          },
+          // {
+          //   label: 'Update Report',
+          //   icon: FileEdit,
+          //   variant: 'primary',
+          //   onClick: () => handleUpdateReport(case_)
+          // },
           {
             label: 'Message Patient',
             icon: MessageSquare,
@@ -504,12 +514,20 @@ const DoctorCasesManagement = () => {
         break;
 
       case 'CONSULTATION_COMPLETE':
+            actions.push({
+            label: 'Prepare Report',
+            icon: FileEdit,
+            variant: 'primary',
+            onClick: () => handleUpdateReport(case_)
+        });
+        break;
+
       case 'CLOSED':
         actions.push({
           label: 'View Report',
           icon: BookOpen,
           variant: 'outline',
-          onClick: () => handleViewReport(case_)
+          onClick: () => handleViewPdf(case_)
         });
         break;
 
@@ -561,7 +579,7 @@ const DoctorCasesManagement = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <StatsCard
           title="Total Cases"
           value={stats.total}
@@ -591,12 +609,6 @@ const DoctorCasesManagement = () => {
           value={stats.pendingPayment}
           icon={<DollarSign className="w-5 h-5" />}
           changeType="neutral"
-        />
-        <StatsCard
-          title="Critical Cases"
-          value={stats.critical}
-          icon={<AlertTriangle className="w-5 h-5" />}
-          changeType="decrease"
         />
         <StatsCard
           title="Total Earnings"
@@ -731,7 +743,9 @@ const DoctorCasesManagement = () => {
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredCases.map((case_) => {
+              {filteredCases.
+               filter(case_ => case_.status !== 'ASSIGNED').
+               map((case_) => {
                 const actions = getCaseActions(case_);
                 
                 return (

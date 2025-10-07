@@ -140,7 +140,7 @@ const DoctorCaseDetails = () => {
       setRefreshing(true);
       
       // Get active cases and find the specific case
-      const activeCases = await execute(() => doctorService.getActiveCases());
+      const activeCases = await execute(() => doctorService.getAllCasses());
       
       // Find the case by ID
       const foundCase = activeCases?.find(c => c.id === parseInt(caseId));
@@ -245,6 +245,14 @@ const DoctorCaseDetails = () => {
       alert('Failed to load document preview');
       setLoadingDocument(false);
       setShowDocumentViewer(false);
+    }
+  };
+
+  const handleViewPdf = (caseDetails) => {
+    if (caseDetails.medicalReportFileLink) {
+      // Open PDF in new tab for viewing
+      const pdfLin = caseDetails.medicalReportFileLink.replace('/api/files/reports/', '/api/files/reports/serve/');
+      window.open(pdfLin, '_blank');
     }
   };
 
@@ -720,7 +728,7 @@ const DoctorCaseDetails = () => {
                     {/* IN_PROGRESS Status Actions */}
                     {caseDetails.status === 'IN_PROGRESS' && (
                       <>
-                        <Button
+                        {/* <Button
                           variant="primary"
                           size="sm"
                           className="w-full"
@@ -730,7 +738,7 @@ const DoctorCaseDetails = () => {
                           })}
                         >
                           Update Case Report
-                        </Button>
+                        </Button> */}
                         
                         {patientInfo && (
                           <Button
@@ -749,15 +757,25 @@ const DoctorCaseDetails = () => {
                     )}
 
                     {/* CONSULTATION_COMPLETE & CLOSED Status Actions */}
-                    {(caseDetails.status === 'CONSULTATION_COMPLETE' || caseDetails.status === 'CLOSED') && (
+                    {(caseDetails.status === 'CONSULTATION_COMPLETE') && (
                       <Button
                         variant="primary"
                         size="sm"
                         className="w-full"
                         icon={<FileText className="w-4 h-4" />}
-                        onClick={() => navigate('/app/doctor/reports', {
-                          state: { caseId: caseDetails.id }
-                        })}
+                        onClick={() => navigate('/app/doctor/reports')}
+                      >
+                        Prepare Report
+                      </Button>
+                    )}
+
+                      {(caseDetails.status === 'CLOSED') && (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        className="w-full"
+                        icon={<FileText className="w-4 h-4" />}
+                        onClick={() => handleViewPdf(caseDetails)}
                       >
                         View Case Report
                       </Button>

@@ -11,7 +11,8 @@ import {
   Edit,
   CheckCircle,
   Clock,
-  Activity
+  Activity,
+  Eye
 } from 'lucide-react';
 import doctorService from '../../services/api/doctorService';
 
@@ -36,7 +37,7 @@ const ViewReport = () => {
     
     try {
       const response = await doctorService.getConsultationReportById(reportId);
-        setReport(response);
+      setReport(response);
     } catch (err) {
       console.error('Error fetching report:', err);
       setError('Failed to load report. Please try again.');
@@ -46,12 +47,17 @@ const ViewReport = () => {
   };
 
   const handleExportPdf = async () => {
+    if (!window.confirm('Once exported, this report will be finalized and cannot be edited. Continue?')) {
+      return;
+    }
+
     setExporting(true);
     try {
       const response = await doctorService.exportReportToPdf(reportId);
       if (response.data?.success) {
-        alert('Report exported to PDF successfully!');
-        fetchReport(); // Refresh to show PDF link
+        alert('Report exported to PDF successfully! The report is now finalized.');
+        // Refresh to show updated status and PDF link
+        await fetchReport();
       }
     } catch (err) {
       console.error('Error exporting report:', err);
@@ -61,9 +67,19 @@ const ViewReport = () => {
     }
   };
 
+  const handleViewPdf = () => {
+    if (report.pdfFileLink) {
+      // Open PDF in new tab for viewing
+      const pdfLin = report.pdfFileLink.replace('/api/files/reports/', '/api/files/reports/serve/');
+      window.open(pdfLin, '_blank');
+    }
+  };
+
   const handleDownloadPdf = () => {
     if (report.pdfFileLink) {
-      window.open(report.pdfFileLink, '_blank');
+      // Create download link by adding /download to the path
+      const downloadUrl = report.pdfFileLink.replace('/api/files/reports/', '/api/files/reports/download/');
+      window.open(downloadUrl, '_blank');
     }
   };
 
@@ -164,7 +180,7 @@ const ViewReport = () => {
             <button
               onClick={handleExportPdf}
               disabled={exporting}
-              className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {exporting ? (
                 <>
@@ -182,13 +198,22 @@ const ViewReport = () => {
         )}
 
         {isFinalized && report.pdfFileLink && (
-          <button
-            onClick={handleDownloadPdf}
-            className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-          >
-            <Download className="w-5 h-5" />
-            Download PDF
-          </button>
+          <>
+            <button
+              onClick={handleViewPdf}
+              className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Eye className="w-5 h-5" />
+              View PDF
+            </button>
+            <button
+              onClick={handleDownloadPdf}
+              className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            >
+              <Download className="w-5 h-5" />
+              Download PDF
+            </button>
+          </>
         )}
       </div>
 
@@ -239,34 +264,47 @@ const ViewReport = () => {
               <DataField label="Appointment ID" value={`#${report.appointment.id}`} />
               <DataField 
                 label="Date & Time" 
-                value={formatDate(report.appointment.scheduledTime)} 
+                value={formatDate(report.appointment.appointmentDateTime)}
               />
-              <DataField label="Duration" value={`${report.appointment.duration} minutes`} />
-              <DataField label="Type" value={report.appointment.consultationType} />
+              <DataField label="Status" value={report.appointment.status} />
+              <DataField label="Consultation Type" value={report.appointment.consultationType || 'N/A'} />
             </div>
           </Section>
         )}
 
-        {/* Medical Findings */}
-        <Section title="Medical Findings" icon={<FileText className="w-6 h-6" />}>
-          {report.diagnosis && (
-            <ContentBlock title="Diagnosis" content={report.diagnosis} />
-          )}
-          {report.prescriptions && (
-            <ContentBlock title="Prescriptions" content={report.prescriptions} />
-          )}
+        {/* Diagnosis */}
+        <Section title="Diagnosis" icon={<FileText className="w-6 h-6" />}>
+          <div className="bg-gray-50 rounded-lg p-4">
+            <p className="text-gray-700 whitespace-pre-wrap">{report.diagnosis || 'No diagnosis provided'}</p>
+          </div>
         </Section>
 
         {/* Recommendations */}
-        <Section title="Recommendations & Follow-up" icon={<Activity className="w-6 h-6" />}>
-          {report.recommendations && (
-            <ContentBlock title="Medical Recommendations" content={report.recommendations} />
-          )}
-          {report.followUpInstructions && (
-            <ContentBlock title="Follow-up Instructions" content={report.followUpInstructions} />
-          )}
-          
-          <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+        <Section title="Recommendations" icon={<FileText className="w-6 h-6" />}>
+          <div className="bg-gray-50 rounded-lg p-4">
+            <p className="text-gray-700 whitespace-pre-wrap">{report.recommendations || 'No recommendations provided'}</p>
+          </div>
+        </Section>
+
+        {/* Prescriptions */}
+        <Section title="Prescriptions" icon={<FileText className="w-6 h-6" />}>
+          <div className="bg-gray-50 rounded-lg p-4">
+            <p className="text-gray-700 whitespace-pre-wrap">{report.prescriptions || 'No prescriptions provided'}</p>
+          </div>
+        </Section>
+
+        {/* Follow-up Instructions */}
+        {report.followUpInstructions && (
+          <Section title="Follow-up Instructions" icon={<FileText className="w-6 h-6" />}>
+            <div className="bg-blue-50 rounded-lg p-4">
+              <p className="text-gray-700 whitespace-pre-wrap">{report.followUpInstructions}</p>
+            </div>
+          </Section>
+        )}
+
+        {/* Follow-up Details */}
+        <Section title="Follow-up Details" icon={<Calendar className="w-6 h-6" />}>
+          <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <DataField 
                 label="Follow-up Required" 
@@ -293,26 +331,35 @@ const ViewReport = () => {
           </Section>
         )}
 
-        {/* PDF Link */}
+        {/* PDF Link Section */}
         {isFinalized && report.pdfFileLink && (
           <div className="p-6 border-t border-gray-200 bg-green-50">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <CheckCircle className="w-6 h-6 text-green-600" />
                 <div>
-                  <p className="font-semibold text-gray-900">PDF Available</p>
+                  <p className="font-semibold text-gray-900">PDF Report Available</p>
                   <p className="text-sm text-gray-600">
                     This report has been finalized and exported to PDF
                   </p>
                 </div>
               </div>
-              <button
-                onClick={handleDownloadPdf}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-              >
-                <Download className="w-4 h-4" />
-                Download
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleViewPdf}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Eye className="w-4 h-4" />
+                  View
+                </button>
+                <button
+                  onClick={handleDownloadPdf}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  Download
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -332,43 +379,30 @@ const ViewReport = () => {
   );
 };
 
-// Reusable Components
+// Helper Components
 const Section = ({ title, icon, children }) => (
   <div className="p-6 border-b border-gray-200 last:border-b-0">
-    <div className="flex items-center gap-3 mb-4">
-      <div className="text-blue-600">{icon}</div>
-      <h2 className="text-xl font-bold text-gray-900">{title}</h2>
+    <div className="flex items-center gap-2 mb-4">
+      {icon}
+      <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
     </div>
     {children}
   </div>
 );
 
+const DataField = ({ label, value, highlight = false }) => (
+  <div className={`${highlight ? 'bg-yellow-50 border border-yellow-200 rounded-lg p-3' : ''}`}>
+    <dt className="text-sm font-medium text-gray-500 mb-1">{label}</dt>
+    <dd className="text-base text-gray-900">{value || 'N/A'}</dd>
+  </div>
+);
+
 const InfoItem = ({ icon, label, value }) => (
-  <div className="flex items-center gap-3">
-    {icon}
+  <div className="flex items-start gap-3">
+    <div className="mt-1">{icon}</div>
     <div>
-      <p className="text-xs font-medium text-gray-500 uppercase">{label}</p>
-      <p className="text-sm font-semibold text-gray-900">{value}</p>
-    </div>
-  </div>
-);
-
-const DataField = ({ label, value, highlight }) => (
-  <div className={`${highlight ? 'p-3 bg-blue-50 rounded-lg' : ''}`}>
-    <p className="text-sm font-semibold text-gray-700 mb-1">{label}</p>
-    <p className={`text-sm ${highlight ? 'text-blue-900 font-semibold' : 'text-gray-600'}`}>
-      {value || 'N/A'}
-    </p>
-  </div>
-);
-
-const ContentBlock = ({ title, content }) => (
-  <div className="mb-4">
-    <h3 className="text-sm font-bold text-gray-700 mb-2">{title}</h3>
-    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-      <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
-        {content}
-      </p>
+      <p className="text-sm text-gray-600">{label}</p>
+      <p className="text-base font-semibold text-gray-900">{value}</p>
     </div>
   </div>
 );

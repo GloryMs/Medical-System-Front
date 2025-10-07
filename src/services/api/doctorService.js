@@ -71,6 +71,10 @@ const doctorService = {
     return await api.get(`/doctor-service/api/doctors/cases/active`);
   },
 
+    getAllCasses: async () => {
+    return await api.get(`/doctor-service/api/doctors/cases/all`);
+  },
+
   setCaseFee: async (caseId, consultationFee) => {
     return await api.post(`/doctor-service/api/doctors/cases/${caseId}/set-fee`, {consultationFee});
   },
