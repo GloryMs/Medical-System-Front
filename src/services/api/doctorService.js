@@ -410,6 +410,88 @@ const doctorService = {
     return await api.get(`/doctor-service/api/doctors/payouts?${params}`);
   },
 
+  // ========== EARNINGS EXPORT METHODS ==========
+  
+  /**
+   * Get earnings chart data
+   */
+  getEarningsChartData: async (period, groupBy = 'daily') => {
+    const params = new URLSearchParams({ period, groupBy });
+    return await api.get(`/doctor-service/api/doctors/earnings/chart-data?${params}`);
+  },
+
+  /**
+   * Get payment method distribution
+   */
+  getPaymentMethodDistribution: async (period) => {
+    const params = new URLSearchParams({ period });
+    return await api.get(`/doctor-service/api/doctors/earnings/payment-methods?${params}`);
+  },
+
+  /**
+   * Export earnings report as PDF
+   */
+  exportEarningsPdf: async (period, startDate = null, endDate = null) => {
+    try {
+      const params = new URLSearchParams({ period });
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      
+      const response = await api.get(
+        `/doctor-service/api/doctors/earnings/export/pdf?${params}`,
+        { responseType: 'blob' }
+      );
+      
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `earnings_report_${period}_${new Date().getTime()}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      return response;
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Export earnings report as CSV
+   */
+  exportEarningsCsv: async (period, startDate = null, endDate = null) => {
+    try {
+      const params = new URLSearchParams({ period });
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      
+      const response = await api.get(
+        `/doctor-service/api/doctors/earnings/export/csv?${params}`,
+        { responseType: 'blob' }
+      );
+      
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response], { type: 'text/csv' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `earnings_report_${period}_${new Date().getTime()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      return response;
+    } catch (error) {
+      console.error('Error exporting CSV:', error);
+      throw error;
+    }
+  },
+
+  // ========== CHART DATA METHODS ==========
+
   // Bank Account Management
   getBankAccounts: async () => {
     return await api.get('/doctor-service/api/doctors/bank-accounts');
