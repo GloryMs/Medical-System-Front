@@ -27,6 +27,7 @@ import CaseDetails from './pages/patient/CaseDetails';
 import PatientAppointments from './pages/patient/PatientAppointments';
 import AppointmentDetails from './pages/patient/AppointmentDetails';
 import PatientNotifications from './pages/patient/PatientNotifications';
+import DoctorCommunication from './pages/patient/DoctorCommunication';
 import PatientPayments from './pages/patient/PatientPayments';
 import PaymentHistory from './pages/patient/PaymentHistory';
 import PatientProfile from './pages/patient/PatientProfile';
@@ -154,7 +155,8 @@ const AppContent = () => {
                 <Route path="complaints" element={<PatientComplaints />} />
                 <Route path="complaints/:id" element={<ComplaintDetails />} />
                 <Route path="subscription" element={<SubscriptionManagement />} />
-                <Route path="settings" element={<PatientSettings />} />            
+                <Route path="settings" element={<PatientSettings />} /> 
+                <Route path="communication" element={<DoctorCommunication />} />           
               </Routes>
             </ProtectedRoute>
           } />

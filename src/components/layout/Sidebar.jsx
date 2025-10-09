@@ -36,6 +36,7 @@ const Sidebar = ({ open, onClose, userRole, userId }) => {
           { name: 'Appointments', href: '/app/patient/appointments', icon: Calendar },
           { name: 'Payments', href: '/app/patient/payments', icon: CreditCard },
           { name: 'Notifications', href: '/app/patient/notifications', icon: Bell },
+          { name: 'communication', href: '/app/patient/communication', icon: MessageSquare },
           { name: 'Complaints', href: '/app/patient/complaints', icon: AlertTriangle },
           { name: 'Profile', href: '/app/patient/profile', icon: User },
           { name: 'Subscription', href: '/app/patient/subscription', icon: Plus },

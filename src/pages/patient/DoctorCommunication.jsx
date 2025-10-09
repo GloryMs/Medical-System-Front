@@ -1,9 +1,8 @@
-// src/pages/patient/PatientCommunication.jsx
 import React from 'react';
 import CommunicationPage from '../communication/components/CommunicationPage';
 
-const PatientCommunication = () => {
+const DoctorCommunication = () => {
   return <CommunicationPage />;
 };
 
-export default PatientCommunication;
+export default DoctorCommunication;
