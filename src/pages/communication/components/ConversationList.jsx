@@ -1,5 +1,5 @@
 // src/pages/communication/components/ConversationList.jsx
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Search, Circle, Clock } from 'lucide-react';
 import Badge from '../../../components/common/Badge';
 import { formatDistanceToNow } from 'date-fns';
@@ -15,7 +15,7 @@ const ConversationList = ({
   unreadCount
 }) => {
   // Debug log
-  useEffect(() => {
+  React.useEffect(() => {
     console.log('ConversationList received conversations:', conversations);
     console.log('Conversations is array?', Array.isArray(conversations));
     console.log('Conversations length:', conversations?.length);

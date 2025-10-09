@@ -3,10 +3,20 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { MessageSquare, Loader } from 'lucide-react';
 import ConversationView from './ConversationView';
-import ConversationList from './ConversationView';
+import ConversationList from './ConversationList';
 import { useAuth } from '../../../hooks/useAuth';
 import { useApi } from '../../../hooks/useApi';
 import messageService from '../../../services/api/messageService';
+
+// // src/pages/communication/components/CommunicationPage.jsx
+// import React, { useState, useEffect } from 'react';
+// import { useNavigate, useLocation } from 'react-router-dom';
+// import { MessageSquare, Loader } from 'lucide-react';
+// import ConversationView from './ConversationView';
+// import ConversationList from './ConversationList'; // FIXED: Was importing ConversationView instead
+// import { useAuth } from '../../../hooks/useAuth';
+// import { useApi } from '../../../hooks/useApi';
+// import messageService from '../../../services/api/messageService';
 
 const CommunicationPage = () => {
   const navigate = useNavigate();
@@ -216,9 +226,11 @@ const CommunicationPage = () => {
           />
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center">
-            <MessageSquare className="w-16 h-16 text-gray-300 mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No conversation selected</h3>
-            <p className="text-gray-600">Select a conversation from the list to start messaging</p>
+            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+              <MessageSquare className="w-10 h-10 text-gray-400" />
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">No conversation selected</h3>
+            <p className="text-gray-500">Select a conversation from the list to start messaging</p>
           </div>
         )}
       </div>
