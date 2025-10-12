@@ -431,171 +431,367 @@ const DoctorAppointments = () => {
     return status === 'completed';
   };
 
-  const renderListView = () => (
-    <div className="space-y-4">
-      {filteredAppointments.length > 0 ? (
-        filteredAppointments.map(appointment => (
-          <Card key={appointment.id} className="hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between">
-              {/* Appointment Info */}
-              <div className="flex-1">
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <h3 className="font-semibold text-gray-900 mb-1">
-                      {appointment.doctor?.fullName || 'Patient Name N/A'}
-                    </h3>
-                    <div className="flex items-center space-x-2">
-                      <StatusBadge status={appointment.status} />
-                      {appointment.rescheduleCount > 0 && (
-                        <Badge variant="warning" size="sm">
-                          Rescheduled {appointment.rescheduleCount}x
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
+  // Helper function to group and sort appointments by status
+const groupAppointmentsByStatus = (appointments) => {
+  // Define status priority order
+  const statusOrder = {
+    'CONFIRMED': 1,
+    'SCHEDULED': 2,
+    'RESCHEDULED': 3,
+    'COMPLETED': 4,
+    'CANCELLED': 5,
+    'PENDING': 6,
+    'NO_SHOW': 7
+  };
+
+  // Group appointments by status
+  const grouped = appointments.reduce((acc, appointment) => {
+    const status = appointment.status?.toUpperCase() || 'PENDING';
+    if (!acc[status]) {
+      acc[status] = [];
+    }
+    acc[status].push(appointment);
+    return acc;
+  }, {});
+
+  // Sort each group by scheduled time (earliest first)
+  Object.keys(grouped).forEach(status => {
+    grouped[status].sort((a, b) => 
+      new Date(a.scheduledTime) - new Date(b.scheduledTime)
+    );
+  });
+
+  // Return groups in priority order
+  return Object.entries(grouped)
+    .sort(([statusA], [statusB]) => {
+      const priorityA = statusOrder[statusA] || 999;
+      const priorityB = statusOrder[statusB] || 999;
+      return priorityA - priorityB;
+    });
+};
+
+// Get status display info
+const getStatusInfo = (status) => {
+  const statusMap = {
+    'CONFIRMED': {
+      label: 'Confirmed Appointments',
+      icon: <CheckCircle className="w-5 h-5" />,
+      color: 'text-green-600',
+      bgColor: 'bg-green-50',
+      borderColor: 'border-green-200',
+      description: 'Ready for consultation'
+    },
+    'SCHEDULED': {
+      label: 'Scheduled Appointments',
+      icon: <Calendar className="w-5 h-5" />,
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-50',
+      borderColor: 'border-blue-200',
+      description: 'Awaiting confirmation'
+    },
+    'RESCHEDULED': {
+      label: 'Rescheduled Appointments',
+      icon: <Clock className="w-5 h-5" />,
+      color: 'text-yellow-600',
+      bgColor: 'bg-yellow-50',
+      borderColor: 'border-yellow-200',
+      description: 'Time has been changed'
+    },
+    'COMPLETED': {
+      label: 'Completed Appointments',
+      icon: <CheckCircle className="w-5 h-5" />,
+      color: 'text-gray-600',
+      bgColor: 'bg-gray-50',
+      borderColor: 'border-gray-200',
+      description: 'Consultation finished'
+    },
+    'CANCELLED': {
+      label: 'Cancelled Appointments',
+      icon: <XCircle className="w-5 h-5" />,
+      color: 'text-red-600',
+      bgColor: 'bg-red-50',
+      borderColor: 'border-red-200',
+      description: 'Appointment cancelled'
+    },
+    'PENDING': {
+      label: 'Pending Appointments',
+      icon: <Clock className="w-5 h-5" />,
+      color: 'text-orange-600',
+      bgColor: 'bg-orange-50',
+      borderColor: 'border-orange-200',
+      description: 'Awaiting action'
+    },
+    'NO_SHOW': {
+      label: 'No Show Appointments',
+      icon: <AlertTriangle className="w-5 h-5" />,
+      color: 'text-red-600',
+      bgColor: 'bg-red-50',
+      borderColor: 'border-red-200',
+      description: 'Patient did not attend'
+    }
+  };
+
+  return statusMap[status] || {
+    label: `${status} Appointments`,
+    icon: <Calendar className="w-5 h-5" />,
+    color: 'text-gray-600',
+    bgColor: 'bg-gray-50',
+    borderColor: 'border-gray-200',
+    description: ''
+  };
+};
+
+const renderListView = () => {
+  const groupedAppointments = groupAppointmentsByStatus(filteredAppointments);
+
+  if (filteredAppointments.length === 0) {
+    return (
+      <Card>
+        <div className="text-center py-12">
+          <Calendar className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No Appointments Found</h3>
+          <p className="text-gray-600">No appointments match your current filters.</p>
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      {groupedAppointments.map(([status, appointments]) => {
+        const statusInfo = getStatusInfo(status);
+        
+        return (
+          <div key={status} className="space-y-4">
+            {/* Status Group Header */}
+            <div className={`flex items-center justify-between p-4 rounded-lg border-2 ${statusInfo.borderColor} ${statusInfo.bgColor}`}>
+              <div className="flex items-center space-x-3">
+                <div className={statusInfo.color}>
+                  {statusInfo.icon}
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-2 text-gray-600">
-                      <Calendar className="w-4 h-4" />
-                      <span>{formatDate(appointment.scheduledTime)}</span>
-                    </div>
-                    <div className="flex items-center space-x-2 text-gray-600">
-                      <Clock className="w-4 h-4" />
-                      <span>{formatTime(appointment.scheduledTime)}</span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-2 text-gray-600">
-                      {renderConsultationTypeIcon(appointment.consultationType)}
-                      <span>{CONSULTATION_TYPE[appointment.consultationType] || appointment.consultationType}</span>
-                    </div>
-                    <div className="flex items-center space-x-2 text-gray-600">
-                      <Clock className="w-4 h-4" />
-                      <span>{appointment.duration || 30} minutes</span>
-                    </div>
-                    
-                    {appointment.caseId && (
-                      <div className="flex items-center space-x-2">
-                        <FileText className="w-4 h-4" />
-                        <span>Case ID: #{appointment.caseId}</span>
-                      </div>
-                    )}
-
-                    {appointment.rescheduleReason && (
-                      <div className="flex items-start space-x-2 text-yellow-600">
-                        <AlertTriangle className="w-4 h-4 mt-0.5" />
-                        <span className="text-xs">{appointment.rescheduleReason}</span>
-                      </div>
-                    )}
-                  </div>
+                <div>
+                  <h3 className={`text-lg font-semibold ${statusInfo.color}`}>
+                    {statusInfo.label}
+                  </h3>
+                  <p className="text-sm text-gray-600">{statusInfo.description}</p>
                 </div>
               </div>
-
-              {/* Action Buttons - Based on Status */}
-              <div className="flex flex-col space-y-2 ml-4">
-                {/* CONFIRMED status actions */}
-                {appointment.status?.toLowerCase() === 'confirmed' && (
-                  <>
-                    {canJoin(appointment) && (
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        icon={<Video className="w-4 h-4" />}
-                        onClick={() => handleJoinConsultation(appointment)}
-                        className="bg-green-600 hover:bg-green-700 text-white"
-                      >
-                        Join
-                      </Button>
-                    )}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        icon={<CheckCircle className="w-4 h-4" />}
-                        onClick={() => {
-                          setSelectedAppointment(appointment);
-                          setShowCompleteConfirmModal(true);
-                        }}
-                        className="border-green-600 text-green-600 hover:bg-green-50"
-                      >
-                        Complete
-                      </Button>
-                  </>
-                )}
-
-                {/* COMPLETED status actions */}
-                {appointment.status?.toLowerCase() === 'completed' && canViewReport(appointment) && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    icon={<FileText className="w-4 h-4" />}
-                    onClick={() => handleViewReport(appointment)}
-                    className="border-primary-400 text-primary-600 hover:bg-primary-50"
-                  >
-                    View Report
-                  </Button>
-                )}
-
-                {/* Common actions for all statuses */}
-                <div className="flex space-x-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    icon={<Eye className="w-4 h-4" />}
-                    onClick={() => {
-                      setSelectedAppointment(appointment);
-                      setShowDetailsModal(true);
-                    }}
-                    title="View Details"
-                  >
-                    Details
-                  </Button>
-
-                  {canViewCase(appointment) && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      icon={<FileText className="w-4 h-4" />}
-                      onClick={() => handleViewCase(appointment.caseId)}
-                      title="View Case"
-                    >
-                      Case
-                    </Button>
-                  )}
-
-                  {canCancel(appointment) && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-red-600 hover:text-red-700"
-                      icon={<XCircle className="w-4 h-4" />}
-                      onClick={() => {
-                        setSelectedAppointment(appointment);
-                        setShowCancelModal(true);
-                      }}
-                      title="Cancel Appointment"
-                    >
-                      Cancel
-                    </Button>
-                  )}
-                </div>
+              <div className={`px-3 py-1 rounded-full ${statusInfo.bgColor} border ${statusInfo.borderColor}`}>
+                <span className={`text-sm font-semibold ${statusInfo.color}`}>
+                  {appointments.length} {appointments.length === 1 ? 'Appointment' : 'Appointments'}
+                </span>
               </div>
             </div>
-          </Card>
-        ))
-      ) : (
-        <Card>
-          <div className="text-center py-12">
-            <Calendar className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No Appointments Found</h3>
-            <p className="text-gray-600">No appointments match your current filters.</p>
+
+            {/* Appointments in this status group */}
+            <div className="space-y-3">
+              {appointments.map(appointment => (
+                <Card 
+                  key={appointment.id} 
+                  className={`hover:shadow-lg transition-all duration-200 border-l-4 ${statusInfo.borderColor}`}
+                >
+                  <div className="p-5">
+                    <div className="flex items-start justify-between">
+                      {/* Left Section - Main Info */}
+                      <div className="flex-1 space-y-4">
+                        {/* Header Row */}
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-3 mb-2">
+                              <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
+                                <User className="w-5 h-5 text-primary-600" />
+                              </div>
+                              <div>
+                                <h3 className="text-lg font-semibold text-gray-900">
+                                  {appointment.doctor?.fullName || 'Patient Name N/A'}
+                                </h3>
+                                <div className="flex items-center space-x-2 mt-1">
+                                  <StatusBadge status={appointment.status} />
+                                  {appointment.rescheduleCount > 0 && (
+                                    <Badge variant="warning" size="sm">
+                                      Rescheduled {appointment.rescheduleCount}x
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Details Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          {/* Date & Time */}
+                          <div className="space-y-2">
+                            <div className="flex items-center space-x-2 text-gray-700">
+                              <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
+                                <Calendar className="w-4 h-4 text-blue-600" />
+                              </div>
+                              <div>
+                                <p className="text-xs text-gray-500">Date</p>
+                                <p className="text-sm font-medium">{formatDate(appointment.scheduledTime)}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2 text-gray-700">
+                              <div className="w-8 h-8 bg-purple-50 rounded-lg flex items-center justify-center">
+                                <Clock className="w-4 h-4 text-purple-600" />
+                              </div>
+                              <div>
+                                <p className="text-xs text-gray-500">Time</p>
+                                <p className="text-sm font-medium">{formatTime(appointment.scheduledTime)}</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Consultation Details */}
+                          <div className="space-y-2">
+                            <div className="flex items-center space-x-2 text-gray-700">
+                              <div className="w-8 h-8 bg-green-50 rounded-lg flex items-center justify-center">
+                                {renderConsultationTypeIcon(appointment.consultationType)}
+                              </div>
+                              <div>
+                                <p className="text-xs text-gray-500">Type</p>
+                                <p className="text-sm font-medium">
+                                  {CONSULTATION_TYPE[appointment.consultationType] || appointment.consultationType}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2 text-gray-700">
+                              <div className="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center">
+                                <Clock className="w-4 h-4 text-orange-600" />
+                              </div>
+                              <div>
+                                <p className="text-xs text-gray-500">Duration</p>
+                                <p className="text-sm font-medium">{appointment.duration || 30} minutes</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Additional Info */}
+                          <div className="space-y-2">
+                            {appointment.caseId && (
+                              <div className="flex items-center space-x-2 text-gray-700">
+                                <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center">
+                                  <FileText className="w-4 h-4 text-indigo-600" />
+                                </div>
+                                <div>
+                                  <p className="text-xs text-gray-500">Case ID</p>
+                                  <p className="text-sm font-medium">#{appointment.caseId}</p>
+                                </div>
+                              </div>
+                            )}
+                            {appointment.rescheduleReason && (
+                              <div className="flex items-start space-x-2">
+                                <div className="w-8 h-8 bg-yellow-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                                  <AlertTriangle className="w-4 h-4 text-yellow-600" />
+                                </div>
+                                <div className="flex-1">
+                                  <p className="text-xs text-gray-500">Reschedule Reason</p>
+                                  <p className="text-xs text-yellow-700 mt-1">{appointment.rescheduleReason}</p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right Section - Action Buttons */}
+                      <div className="flex flex-col space-y-2 ml-6">
+                        {/* Primary Actions based on Status */}
+                        {appointment.status?.toLowerCase() === 'confirmed' && (
+                          <div className="space-y-2">
+                            {canJoin(appointment) && (
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                icon={<Video className="w-4 h-4" />}
+                                onClick={() => handleJoinConsultation(appointment)}
+                                className="w-full bg-green-600 hover:bg-green-700 text-white"
+                              >
+                                Join Now
+                              </Button>
+                            )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              icon={<CheckCircle className="w-4 h-4" />}
+                              onClick={() => {
+                                setSelectedAppointment(appointment);
+                                setShowCompleteConfirmModal(true);
+                              }}
+                              className="w-full border-green-600 text-green-600 hover:bg-green-50"
+                            >
+                              Mark Complete
+                            </Button>
+                          </div>
+                        )}
+
+                        {appointment.status?.toLowerCase() === 'completed' && canViewReport(appointment) && (
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            icon={<FileText className="w-4 h-4" />}
+                            onClick={() => handleViewReport(appointment)}
+                            className="w-full"
+                          >
+                            View Report
+                          </Button>
+                        )}
+
+                        {/* Secondary Actions */}
+                        <div className="pt-2 border-t border-gray-200 space-y-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            icon={<Eye className="w-4 h-4" />}
+                            onClick={() => {
+                              setSelectedAppointment(appointment);
+                              setShowDetailsModal(true);
+                            }}
+                            className="w-full justify-start"
+                          >
+                            View Details
+                          </Button>
+
+                          {canViewCase(appointment) && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              icon={<FileText className="w-4 h-4" />}
+                              onClick={() => handleViewCase(appointment.caseId)}
+                              className="w-full justify-start"
+                            >
+                              View Case
+                            </Button>
+                          )}
+
+                          {canCancel(appointment) && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+                              icon={<XCircle className="w-4 h-4" />}
+                              onClick={() => {
+                                setSelectedAppointment(appointment);
+                                setShowCancelModal(true);
+                              }}
+                            >
+                              Cancel Appointment
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
           </div>
-        </Card>
-      )}
+        );
+      })}
     </div>
   );
+};
+
 
   const renderCalendarView = () => {
     const monthDates = getMonthDates(currentDate);

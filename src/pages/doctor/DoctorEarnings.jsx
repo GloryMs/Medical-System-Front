@@ -530,7 +530,7 @@ const DoctorEarnings = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {filteredPayments.slice(0, 5).map((payment) => (
+                {filteredPayments.map((payment) => (
                   <tr key={payment.id} className="hover:bg-gray-50">
                     <td className="px-3 py-2 whitespace-nowrap">
                       <span className="text-xs font-medium text-gray-900">#{payment.id}</span>
@@ -564,11 +564,11 @@ const DoctorEarnings = () => {
                 ))}
               </tbody>
             </table>
-            {filteredPayments.length > 5 && (
+            {/* {filteredPayments.length > 5 && (
               <div className="text-center py-2 text-xs text-gray-500 border-t">
                 Showing 5 of {filteredPayments.length} payments
               </div>
-            )}
+            )} */}
           </div>
         )}
       </div>

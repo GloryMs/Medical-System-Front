@@ -271,7 +271,7 @@ const Header = ({ onMenuClick, user }) => {
 
                   {user?.role === 'PATIENT' && (
                     <Link
-                      to="/patient/payments"
+                      to="/app/patient/payments"
                       className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       onClick={() => setProfileDropdownOpen(false)}
                     >
@@ -282,7 +282,7 @@ const Header = ({ onMenuClick, user }) => {
 
                   {user?.role === 'DOCTOR' && (
                     <Link
-                      to="/doctor/earnings"
+                      to="/app/doctor/earnings"
                       className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       onClick={() => setProfileDropdownOpen(false)}
                     >
@@ -292,7 +292,7 @@ const Header = ({ onMenuClick, user }) => {
                   )}
 
                   <Link
-                    to={`/${user?.role?.toLowerCase()}/communication`}
+                    to={`/app/${user?.role?.toLowerCase()}/communication`}
                     className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                     onClick={() => setProfileDropdownOpen(false)}
                   >
@@ -302,7 +302,7 @@ const Header = ({ onMenuClick, user }) => {
 
                   {user?.role === 'ADMIN' && (
                     <Link
-                      to="/admin/configuration"
+                      to="/app/admin/configuration"
                       className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       onClick={() => setProfileDropdownOpen(false)}
                     >
