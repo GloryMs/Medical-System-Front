@@ -70,15 +70,15 @@ const ConversationList = ({
       <div className="flex-1 overflow-y-auto">
         {conversations && conversations.length > 0 ? (
           <>
-            {/* Debug info - remove after fixing */}
+            {/* Debug info - remove after fixing
             {process.env.NODE_ENV === 'development' && (
               <div className="p-2 bg-yellow-50 text-xs">
                 Rendering {conversations.length} conversations
               </div>
-            )}
+            )} */}
             
             {conversations.map((conversation, index) => {
-              console.log(`Rendering conversation ${index}:`, conversation);
+              //console.log(`Rendering conversation ${index}:`, conversation);
               return (
                 <ConversationItem
                   key={conversation.id || index}

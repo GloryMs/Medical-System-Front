@@ -198,12 +198,12 @@ const CommunicationPage = () => {
   return (
     <div className="flex h-[calc(100vh-64px)] bg-gray-50">
       {/* Debug Info - Remove this after fixing */}
-      {process.env.NODE_ENV === 'development' && (
+      {/* {process.env.NODE_ENV === 'development' && (
         <div className="fixed bottom-4 right-4 bg-black text-white text-xs p-2 rounded z-50">
           Conversations: {conversations.length} | Unread: {unreadCount}
         </div>
       )}
-      
+       */}
       <div className="w-80 border-r bg-white flex flex-col shadow-sm">
         <ConversationList
           conversations={conversations}
