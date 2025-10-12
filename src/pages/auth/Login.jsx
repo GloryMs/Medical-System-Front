@@ -50,7 +50,7 @@ const Login = () => {
       
           // Navigate based on user role
     const role = response.role;
-    let dashboardRoute = '/';
+    let dashboardRoute = '/app';
     
     switch(role) {
       case 'PATIENT':
