@@ -19,10 +19,12 @@ import {
   Pill,
   Activity,
   Heart,
+  Lock, 
+  ArrowRight,
   Brain,
   Microscope
 } from 'lucide-react';
-
+import { toast } from 'react-toastify';
 import Card, { StatsCard, AlertCard } from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Badge, { StatusBadge, PriorityBadge } from '../../components/common/Badge';
@@ -88,6 +90,10 @@ const CreateCase = () => {
   const { user } = useAuth();
   const { execute, loading } = useApi();
 
+    // Subscription status state
+  const [subscriptionStatus, setSubscriptionStatus] = useState(null);
+  const [checkingSubscription, setCheckingSubscription] = useState(true);
+
   // Medical configurations from config-service and separate entities
   const [medicalConfigs, setMedicalConfigs] = useState({
     diseases: [],
@@ -150,11 +156,46 @@ const CreateCase = () => {
   const selectedMedications = watch('currentMedicationCodes') || [];
   const selectedSecondaryDiseases = watch('secondaryDiseaseCodes') || [];
   const selectedSecondarySpecs = watch('secondarySpecializations') || [];
-
-  // Load medical configurations on mount
+  
+    // Check subscription status on mount
   useEffect(() => {
-    loadMedicalConfigurations();
+    checkSubscriptionStatus();
   }, []);
+
+  useEffect(() => {
+    if (subscriptionStatus?.isActive) {
+      loadMedicalConfigurations();
+    }
+  }, [subscriptionStatus]);
+
+  const checkSubscriptionStatus = async () => {
+    try {
+      setCheckingSubscription(true);
+      const status = await execute(() => patientService.getSubscriptionStatus());
+      setSubscriptionStatus(status);
+      
+      // If subscription is not active, show warning toast
+      if (!status?.isActive) {
+        toast.warning('Active subscription required to create a case', {
+          position: 'top-center',
+          autoClose: 5000
+        });
+      }
+    } catch (error) {
+      console.error('Failed to check subscription status:', error);
+      toast.error('Unable to verify subscription status. Please try again.', {
+        position: 'top-center'
+      });
+      setSubscriptionStatus({ isActive: false });
+    } finally {
+      setCheckingSubscription(false);
+    }
+  };
+
+  // // Load medical configurations on mount
+  // useEffect(() => {
+  //   loadMedicalConfigurations();
+  // }, []);
 
   // Load diseases when category changes
   useEffect(() => {
@@ -388,17 +429,126 @@ const CreateCase = () => {
       );
       
       // Show success message and redirect
-      alert('Case created successfully! You will be redirected to your cases.');
-      navigate('/app/patient/cases');
+      // alert('Case created successfully! You will be redirected to your cases.');
+      // navigate('/app/patient/cases');
+
+      toast.success('Case created successfully!', {
+        position: 'top-right',
+        autoClose: 3000
+      });
       
-    } catch (error) {
+      setTimeout(() => {
+        navigate('/app/patient/cases');
+      }, 1000);
+
+
+      
+    } 
+    // catch (error) {
+    //   console.error('Failed to create case:', error);
+    //   alert('Failed to create case. Please try again.');
+    // } finally {
+    //   setIsSubmitting(false);
+    //   setUploadProgress(0);
+    // }
+    catch (error) {
       console.error('Failed to create case:', error);
-      alert('Failed to create case. Please try again.');
+      
+      // Handle subscription error from backend
+      if (error.message?.includes('subscription') || error.message?.includes('Subscription')) {
+        toast.error(error.message || 'Active subscription required to create cases', {
+          position: 'top-center',
+          autoClose: 6000,
+          onClick: () => navigate('/app/patient/subscription')
+        });
+      } else {
+        toast.error(error.message || 'Failed to create case. Please try again.', {
+          position: 'top-right',
+          autoClose: 5000
+        });
+      }
     } finally {
       setIsSubmitting(false);
       setUploadProgress(0);
     }
   };
+
+    // Loading state while checking subscription
+  if (checkingSubscription) {
+    return (
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="flex flex-col items-center justify-center min-h-96">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mb-4"></div>
+          <p className="text-gray-600">Verifying subscription status...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show subscription required message if not active
+  if (!subscriptionStatus?.isActive) {
+    return (
+      <div className="max-w-4xl mx-auto p-6">
+        <Card className="text-center py-12">
+          <div className="flex flex-col items-center">
+            <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mb-6">
+              <Lock className="w-10 h-10 text-orange-600" />
+            </div>
+            
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">
+              Active Subscription Required
+            </h2>
+            
+            <p className="text-gray-600 mb-6 max-w-md">
+              To create and submit medical cases, you need an active subscription. 
+              Subscribe now to get access to our network of qualified doctors and specialists.
+            </p>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 max-w-md">
+              <h3 className="font-semibold text-blue-900 mb-2">Subscription Benefits:</h3>
+              <ul className="text-sm text-blue-800 space-y-1 text-left">
+                <li className="flex items-start">
+                  <Check className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+                  <span>Submit unlimited medical cases</span>
+                </li>
+                <li className="flex items-start">
+                  <Check className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+                  <span>Get matched with qualified specialists</span>
+                </li>
+                <li className="flex items-start">
+                  <Check className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+                  <span>Access to video consultations</span>
+                </li>
+                <li className="flex items-start">
+                  <Check className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+                  <span>Priority support and notifications</span>
+                </li>
+              </ul>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-4">
+              <Button
+                onClick={() => navigate('/app/patient/subscription')}
+                variant="primary"
+                size="lg"
+                icon={<ArrowRight className="w-5 h-5" />}
+              >
+                View Subscription Plans
+              </Button>
+              
+              <Button
+                onClick={() => navigate('/app/patient/dashboard')}
+                variant="outline"
+                size="lg"
+              >
+                Back to Dashboard
+              </Button>
+            </div>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-8">
@@ -406,6 +556,20 @@ const CreateCase = () => {
       <div className="text-center">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Create New Case</h1>
         <p className="text-gray-600">Describe your medical concern to get matched with the right specialists</p>
+      </div>
+
+      {/* Subscription Status Banner */}
+      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+        <div className="flex items-center">
+          <Check className="w-5 h-5 text-green-600 mr-3" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-green-900">Active Subscription</p>
+            <p className="text-xs text-green-700">
+              Valid until {new Date(subscriptionStatus.expiryDate).toLocaleDateString()} 
+              • {subscriptionStatus.planType} Plan
+            </p>
+          </div>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">

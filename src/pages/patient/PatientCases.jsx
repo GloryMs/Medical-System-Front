@@ -14,6 +14,9 @@ import {
   User,
   Calendar,
   Stethoscope,
+  Lock, 
+  AlertCircle,
+  ArrowRight,
   Activity,
   TrendingUp
 } from 'lucide-react';
@@ -25,6 +28,7 @@ import Modal, { ConfirmModal, FormModal } from '../../components/common/Modal';
 import { useAuth } from '../../hooks/useAuth';
 import { useApi } from '../../hooks/useApi';
 import patientService from '../../services/api/patientService';
+import toast from '../../utils/toast';
 
 const PatientCases = () => {
   const navigate = useNavigate();
@@ -33,6 +37,7 @@ const PatientCases = () => {
 
   // State management
   const [cases, setCases] = useState([]);
+  const [subscriptionStatus, setSubscriptionStatus] = useState(null);
   const [filteredCases, setFilteredCases] = useState([]);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedCase, setSelectedCase] = useState(null);
@@ -47,8 +52,18 @@ const PatientCases = () => {
 
   // Filter cases when search term or filters change
   useEffect(() => {
+    loadSubscriptionStatus();
     filterCases();
   }, [cases, searchTerm, statusFilter, urgencyFilter]);
+
+  const loadSubscriptionStatus = async () => {
+    try {
+      const status = await execute(() => patientService.getSubscriptionStatus());
+      setSubscriptionStatus(status);
+    } catch (error) {
+      console.error('Failed to load subscription status:', error);
+    }
+  };
 
   const loadCases = async () => {
     try {
@@ -57,6 +72,26 @@ const PatientCases = () => {
     } catch (error) {
       console.error('Failed to load cases:', error);
     }
+  };
+
+  const handleCreateCase = () => {
+    if (!subscriptionStatus?.isActive) {
+      toast.warning('Active subscription required to create cases', {
+        position: 'top-center',
+        autoClose: 5000,
+        onClick: () => navigate('/app/patient/subscription')
+      });
+      return;
+    }
+    navigate('/app/patient/cases/create');
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
   };
 
   const filterCases = () => {
@@ -125,17 +160,57 @@ const PatientCases = () => {
           </p>
         </div>
         
-        <div className="mt-4 lg:mt-0">
-          <Button
-            variant="primary"
-            icon={<Plus className="w-4 h-4" />}
-            onClick={() => navigate('/app/patient/cases/create')}
-            disabled={loading}
-          >
-            Create New Case
-          </Button>
+        <div className="flex items-center gap-3">
+          {!subscriptionStatus?.isActive ? (
+            <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 px-4 py-2 rounded-lg">
+              <Lock className="w-4 h-4 text-orange-600" />
+              <span className="text-sm text-orange-800 font-medium">
+                Subscription Required
+              </span>
+              <Button
+                size="sm"
+                variant="warning"
+                onClick={() => navigate('/app/patient/subscription')}
+              >
+                Subscribe Now
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant="primary"
+              icon={<Plus className="w-4 h-4" />}
+              onClick={handleCreateCase}
+            >
+              Create New Case
+            </Button>
+          )}
         </div>
       </div>
+
+      {/* Subscription Warning Banner */}
+      {!subscriptionStatus?.isActive && (
+        <Card className="bg-orange-50 border-orange-200">
+          <div className="flex items-start">
+            <AlertCircle className="w-5 h-5 text-orange-600 mr-3 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <h3 className="font-semibold text-orange-900 mb-1">
+                Active Subscription Required
+              </h3>
+              <p className="text-sm text-orange-800 mb-3">
+                To submit new medical cases and consult with doctors, you need an active subscription. 
+                Subscribe now to unlock all features.
+              </p>
+              <Button
+                size="sm"
+                variant="warning"
+                onClick={() => navigate('/app/patient/subscription')}
+              >
+                View Subscription Plans
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Stats Cards - Exact copy from PatientDashboard.jsx */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -223,6 +298,40 @@ const PatientCases = () => {
       </Card>
 
       {/* Cases List */}
+
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+        </div>
+      ) : cases.length === 0 ? (
+        <Card className="text-center py-12">
+          <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">No cases yet</h3>
+          <p className="text-gray-600 mb-6">
+            {subscriptionStatus?.isActive 
+              ? "Start by creating your first medical case"
+              : "Subscribe to create and manage your medical cases"
+            }
+          </p>
+          {subscriptionStatus?.isActive ? (
+            <Button
+              variant="primary"
+              icon={<Plus className="w-4 h-4" />}
+              onClick={handleCreateCase}
+            >
+              Create Your First Case
+            </Button>
+          ) : (
+            <Button
+              variant="warning"
+              onClick={() => navigate('/app/patient/subscription')}
+            >
+              View Subscription Plans
+            </Button>
+          )}
+        </Card>
+      ) : 
+      (
       <Card>
         <div className="space-y-4">
           {loading && !cases.length ? (
@@ -355,6 +464,8 @@ const PatientCases = () => {
           )}
         </div>
       </Card>
+      )
+    }
 
       {/* Delete Confirmation Modal */}
       <ConfirmModal

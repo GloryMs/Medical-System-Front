@@ -1,11 +1,13 @@
-
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { QueryClient, QueryClientProvider } from 'react-query';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { store } from './store';
 import { useAuth } from './hooks/useAuth';
 import { useSocket } from './hooks/useSocket';
+
 
 // Layout Components
 import Layout from './components/layout/Layout';
@@ -35,27 +37,27 @@ import PatientComplaints from './pages/patient/PatientComplaints';
 import ComplaintDetails from './pages/patient/ComplaintDetails';
 import SubscriptionManagement from './pages/patient/SubscriptionManagement';
 import PatientSettings from './pages/patient/PatientSettings';
-import CreateCase from './pages/patient/CreateCase';
 import EditCase from './pages/patient/EditCase';
+import CreateCase from './pages/patient/CreateCase';
 
-//Doctor Pages
+// Doctor Pages
 import DoctorDashboard from './pages/doctor/DoctorDashboard';
+import DoctorNewAssignments from './pages/doctor/DoctorNewAssignments';
 import DoctorCasesManagement from './pages/doctor/DoctorCasesManagement';
 import DoctorCaseDetails from './pages/doctor/DoctorCaseDetails';
 import DoctorAppointments from './pages/doctor/DoctorAppointments';
+import DoctorNotifications from './pages/doctor/DoctorNotifications';
 import DoctorSchedule from './pages/doctor/DoctorSchedule';
 import DoctorProfile from './pages/doctor/DoctorProfile';
 import DoctorEarnings from './pages/doctor/DoctorEarnings';
 import PatientCommunication from './pages/doctor/PatientCommunication';
 import DoctorSettings from './pages/doctor/DoctorSettings';
-import DoctorNotifications from './pages/doctor/DoctorNotifications';
-import DoctorNewAssignments from './pages/doctor/DoctorNewAssignments';
 import ReportsListPage from './pages/doctor/ReportsListPage';
 import CreateReport from './pages/doctor/CreateReport';
-import EditReport from './pages/doctor/EditReport';
 import ViewReport from './pages/doctor/ViewReport';
+import EditReport from './pages/doctor/EditReport';
 
-//Admin Pages
+// Admin Pages
 import AdminDashboard from './pages/admin/AdminDashboard';
 import UserManagement from './pages/admin/UserManagement';
 import DoctorVerification from './pages/admin/DoctorVerification';
@@ -85,7 +87,7 @@ const queryClient = new QueryClient({
   },
 });
 
-const AppContent = () => {
+const AppRoutes = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
   useSocket(); // Initialize WebSocket connection
 
@@ -102,28 +104,43 @@ const AppContent = () => {
     
     switch (user?.role) {
       case 'PATIENT':
-        return '/patient/dashboard';
+        return '/app/patient/dashboard';
       case 'DOCTOR':
-        return '/doctor/dashboard';
+        return '/app/doctor/dashboard';
       case 'ADMIN':
-        return '/admin/dashboard';
+        return '/app/admin/dashboard';
       default:
         return '/';
     }
   };
 
   return (
-    <Router>
+
+    <>
+      {/* Toast Container for notifications */}
+        <ToastContainer
+          position="top-right"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop={true}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="light"
+        />
+
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/home" element={<LandingPage />} />
         
         <Route path="/login" element={
-          isAuthenticated ? <Navigate to={getDefaultRoute()} /> : <Login />
+          isAuthenticated ? <Navigate to={getDefaultRoute()} replace /> : <Login />
         } />
         <Route path="/register" element={
-          isAuthenticated ? <Navigate to={getDefaultRoute()} /> : <Register />
+          isAuthenticated ? <Navigate to={getDefaultRoute()} replace /> : <Register />
         } />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
@@ -135,7 +152,7 @@ const AppContent = () => {
           </ProtectedRoute>
         }>
           {/* Default Route for authenticated users */}
-          <Route index element={<Navigate to={getDefaultRoute().replace('/', '')} />} />
+          <Route index element={<Navigate to={getDefaultRoute().replace('/app/', '')} replace />} />
 
           {/* Patient Routes */}
           <Route path="patient/*" element={
@@ -204,16 +221,16 @@ const AppContent = () => {
         </Route>
 
         {/* Legacy Routes for Direct Access (Redirect to /app) */}
-        <Route path="/patient/*" element={<Navigate to="/app/patient" />} />
-        <Route path="/doctor/*" element={<Navigate to="/app/doctor" />} />
-        <Route path="/admin/*" element={<Navigate to="/app/admin" />} />
+        <Route path="/patient/*" element={<Navigate to="/app/patient" replace />} />
+        <Route path="/doctor/*" element={<Navigate to="/app/doctor" replace />} />
+        <Route path="/admin/*" element={<Navigate to="/app/admin" replace />} />
 
         {/* Error Pages */}
         <Route path="/access-denied" element={<AccessDenied />} />
         <Route path="/server-error" element={<ServerError />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
-    </Router>
+    </>
   );
 };
 
@@ -221,7 +238,9 @@ const App = () => {
   return (
     <Provider store={store}>
       <QueryClientProvider client={queryClient}>
-        <AppContent />
+        <Router>
+          <AppRoutes />
+        </Router>
       </QueryClientProvider>
     </Provider>
   );

@@ -208,7 +208,7 @@ const SubscriptionManagement = () => {
       
       console.log('Submitting subscription data:', subscriptionData);
       
-      const result = await execute(() => patientService.updateSubscription(subscriptionData));
+      const result = await execute(() => patientService.createSubscription(subscriptionData));
       setCurrentSubscription(result);
       setShowUpgradeModal(false);
       subscriptionForm.reset();
