@@ -252,6 +252,11 @@ const CaseDetails = () => {
     }
   };
 
+  
+  const handleDownloadPdf = (medicalReportFileLink) => {
+    window.open(medicalReportFileLink, '_blank');
+  };
+
   const handleDownloadDocument = async (doc) => {
     try {
       await patientService.downloadCaseDocument(caseId, doc.id, doc.fileName);
@@ -507,7 +512,7 @@ const CaseDetails = () => {
                       icon={<FileText className="w-4 h-4" />}
                       fullWidth
                       disabled={!['CLOSED'].includes(caseData.status)}
-                      onClick={() => handleViewMedicalReport(caseData.medicalReportFileLink)}
+                      onClick={() => handleDownloadPdf(caseData.medicalReportFileLink)}
                     >
                       View Medical Report
                     </Button>

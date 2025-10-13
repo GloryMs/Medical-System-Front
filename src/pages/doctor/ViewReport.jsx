@@ -70,16 +70,16 @@ const ViewReport = () => {
   const handleViewPdf = () => {
     if (report.pdfFileLink) {
       // Open PDF in new tab for viewing
-      const pdfLin = report.pdfFileLink.replace('/api/files/reports/', '/api/files/reports/serve/');
-      window.open(pdfLin, '_blank');
+      //const pdfLin = report.pdfFileLink.replace('/api/files/reports/', '/api/files/reports/serve/');
+      window.open(report.pdfFileLink, '_blank');
     }
   };
 
   const handleDownloadPdf = () => {
     if (report.pdfFileLink) {
       // Create download link by adding /download to the path
-      const downloadUrl = report.pdfFileLink.replace('/api/files/reports/', '/api/files/reports/download/');
-      window.open(downloadUrl, '_blank');
+      //const downloadUrl = report.pdfFileLink.replace('/api/files/reports/', '/api/files/reports/download/');
+      window.open(report.pdfFileLink, '_blank');
     }
   };
 

@@ -128,6 +128,11 @@ const PatientCases = () => {
       }
   };
 
+    const handleDownloadPdf = (medicalReportFileLink) => {
+    window.open(medicalReportFileLink, '_blank');
+  };
+
+
   const handleDeleteCase = async () => {
     if (!selectedCase) return;
     
@@ -438,7 +443,7 @@ const PatientCases = () => {
                         variant="outline"
                         size="sm"
                         icon={<FileText className="w-4 h-4" />}
-                        onClick={() => handleViewMedicalReport(case_.medicalReportFileLink)}
+                        onClick={() => handleDownloadPdf(case_.medicalReportFileLink)}
                       >
                         View Medical Report
                       </Button>
