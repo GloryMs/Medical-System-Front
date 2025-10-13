@@ -6,6 +6,10 @@ const patientService = {
     return await api.get('/patient-service/api/patients/profile');
   },
 
+  createProfile: async (profileData) => {
+    return await api.post('/patient-service/api/patients/profile', profileData);
+  },
+
   updateProfile: async (profileData) => {
     return await api.put('/patient-service/api/patients/profile', profileData);
   },
@@ -14,6 +18,10 @@ const patientService = {
     const formData = new FormData();
     formData.append('avatar', file);
     return await api.upload('/patient-service/api/patients/profile/avatar', formData);
+  },
+
+  changePassword: async (passwordData) => {
+    return await api.put('/patient-service/api/patients/profile/password', passwordData);
   },
 
   // Case Management
