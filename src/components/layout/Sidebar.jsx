@@ -33,6 +33,7 @@ const Sidebar = ({ open, onClose, userRole, userId }) => {
         return [
           { name: 'Dashboard', href: '/app/patient/dashboard', icon: Home },
           { name: 'My Cases', href: '/app/patient/cases', icon: FileText },
+          { name: 'Family Members', href: '/app/patient/dependents', icon: Users },
           { name: 'Appointments', href: '/app/patient/appointments', icon: Calendar },
           { name: 'Payments', href: '/app/patient/payments', icon: CreditCard },
           { name: 'Notifications', href: '/app/patient/notifications', icon: Bell },

@@ -15,12 +15,15 @@ import ProtectedRoute from './components/layout/ProtectedRoute';
 
 // Public Pages
 import LandingPage from './pages/public/LandingPage';
+import Privacy from './pages/public/Privacy';
+import Terms from './pages/public/Terms';
 
 // Auth Pages
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import ResetPassword from './pages/auth/ResetPassword';
+import VerifyResetCode from './pages/auth/VerifyResetCode';
 
 // Patient Pages
 import PatientDashboard from './pages/patient/PatientDashboard';
@@ -39,6 +42,7 @@ import SubscriptionManagement from './pages/patient/SubscriptionManagement';
 import PatientSettings from './pages/patient/PatientSettings';
 import EditCase from './pages/patient/EditCase';
 import CreateCase from './pages/patient/CreateCase';
+import DependentsManagement from './pages/patient/DependentsManagement';
 
 // Doctor Pages
 import DoctorDashboard from './pages/doctor/DoctorDashboard';
@@ -135,15 +139,13 @@ const AppRoutes = () => {
         {/* Public Routes */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/home" element={<LandingPage />} />
-        
-        <Route path="/login" element={
-          isAuthenticated ? <Navigate to={getDefaultRoute()} replace /> : <Login />
-        } />
-        <Route path="/register" element={
-          isAuthenticated ? <Navigate to={getDefaultRoute()} replace /> : <Register />
-        } />
+        <Route path="/login" element={isAuthenticated ? <Navigate to={getDefaultRoute()} replace /> : <Login />} />
+        <Route path="/register" element={isAuthenticated ? <Navigate to={getDefaultRoute()} replace /> : <Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/verify-reset-code" element={<VerifyResetCode />} />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/terms" element={<Terms />} />
 
         {/* Protected Routes with Layout */}
         <Route path="/app" element={
@@ -163,6 +165,7 @@ const AppRoutes = () => {
                 <Route path="cases/:caseId" element={<CaseDetails />} />
                 <Route path="cases/:caseId/edit" element={<EditCase />} />
                 <Route path="cases/create" element={<CreateCase />} />
+                <Route path="dependents" element={<DependentsManagement />} />
                 <Route path="appointments" element={<PatientAppointments />} />
                 <Route path="appointments/:id" element={<AppointmentDetails />} />
                 <Route path="notifications" element={<PatientNotifications />} />

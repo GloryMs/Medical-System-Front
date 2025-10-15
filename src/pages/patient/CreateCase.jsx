@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
+import { Users, UserCheck } from 'lucide-react';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
 import {
@@ -20,6 +21,7 @@ import {
   Activity,
   Heart,
   Lock, 
+  Link,
   ArrowRight,
   Brain,
   Microscope
@@ -33,6 +35,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useApi } from '../../hooks/useApi';
 import patientService from '../../services/api/patientService';
 import commonService from '../../services/api/commonService';
+
 
 // File upload configuration
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -89,6 +92,11 @@ const CreateCase = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { execute, loading } = useApi();
+
+  //Dependant
+  const [dependents, setDependents] = useState([]);
+  const [selectedDependent, setSelectedDependent] = useState(null);
+  const [caseFor, setCaseFor] = useState('self'); // 'self' or 'dependent'
 
     // Subscription status state
   const [subscriptionStatus, setSubscriptionStatus] = useState(null);
@@ -196,6 +204,20 @@ const CreateCase = () => {
   // useEffect(() => {
   //   loadMedicalConfigurations();
   // }, []);
+
+// Load dependents on component mount
+  useEffect(() => {
+    loadDependents();
+  }, []);
+
+  const loadDependents = async () => {
+    try {
+      const data = await patientService.getDependents();
+      setDependents(data || []);
+    } catch (error) {
+      console.error('Error loading dependents:', error);
+    }
+  };
 
   // Load diseases when category changes
   useEffect(() => {
@@ -413,6 +435,7 @@ const CreateCase = () => {
         secondarySpecializations: data.secondarySpecializations || [],
         urgencyLevel: data.urgencyLevel,
         complexity: data.complexity,
+        dependentId: caseFor === 'dependent' ? selectedDependent : null,
         requiresSecondOpinion: data.requiresSecondOpinion,
         minDoctorsRequired: data.minDoctorsRequired,
         maxDoctorsAllowed: data.maxDoctorsAllowed,
@@ -575,6 +598,122 @@ const CreateCase = () => {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
         {/* Case Information */}
         <Card title="Case Information" className="space-y-6">
+          <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+              <Users className="w-5 h-5 mr-2 text-primary-600" />
+              Who is this case for?
+            </h3>
+
+            <div className="space-y-3">
+              {/* Option: Case for myself */}
+              <label className={`
+                flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all
+                ${caseFor === 'self' 
+                  ? 'border-primary-500 bg-primary-50' 
+                  : 'border-gray-200 hover:border-gray-300'
+                }
+              `}>
+                <input
+                  type="radio"
+                  name="caseFor"
+                  value="self"
+                  checked={caseFor === 'self'}
+                  onChange={(e) => {
+                    setCaseFor(e.target.value);
+                    setSelectedDependent(null);
+                  }}
+                  className="w-4 h-4 text-primary-600 focus:ring-primary-500"
+                />
+                <div className="ml-3 flex items-center">
+                  <UserCheck className="w-5 h-5 text-primary-600 mr-2" />
+                  <div>
+                    <div className="font-medium text-gray-900">For Myself</div>
+                    <div className="text-sm text-gray-500">Submit a case for your own medical condition</div>
+                  </div>
+                </div>
+              </label>
+
+              {/* Option: Case for dependent */}
+              <label className={`
+                flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all
+                ${caseFor === 'dependent' 
+                  ? 'border-primary-500 bg-primary-50' 
+                  : 'border-gray-200 hover:border-gray-300'
+                }
+              `}>
+                <input
+                  type="radio"
+                  name="caseFor"
+                  value="dependent"
+                  checked={caseFor === 'dependent'}
+                  onChange={(e) => setCaseFor(e.target.value)}
+                  className="w-4 h-4 text-primary-600 focus:ring-primary-500"
+                />
+                <div className="ml-3 flex items-center flex-1">
+                  <Users className="w-5 h-5 text-primary-600 mr-2" />
+                  <div className="flex-1">
+                    <div className="font-medium text-gray-900">For Family Member</div>
+                    <div className="text-sm text-gray-500">Submit a case on behalf of a family member</div>
+                  </div>
+                </div>
+              </label>
+
+              {/* Dependent Selection */}
+              {caseFor === 'dependent' && (
+                <div className="ml-8 mt-3 space-y-2">
+                  {dependents.length === 0 ? (
+                    <div className="bg-primary-50 border-2 border-primary-200 rounded-lg p-4">
+                      <div className="flex items-start">
+                        <Users className="w-5 h-5 text-primary-600 mt-0.5 mr-3 flex-shrink-0" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-primary-900 mb-2">
+                            No family members found
+                          </p>
+                          <p className="text-sm text-primary-700 mb-3">
+                            You need to add family members first before submitting a case on their behalf
+                          </p>
+
+                            <Button
+                              className='border-primary-200 rounded-lg'
+                              type="button"
+                              size="lg"
+                              onClick={() => navigate('/app/patient/dependents')}
+                              icon={<Link className="w-4 h-4" />}
+                            >
+                              Go to Family Members
+                            </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <select
+                        value={selectedDependent || ''}
+                        onChange={(e) => setSelectedDependent(e.target.value ? Number(e.target.value) : null)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        required={caseFor === 'dependent'}
+                      >
+                        <option value="">Select family member</option>
+                        {dependents.map((dep) => (
+                          <option key={dep.id} value={dep.id}>
+                            {dep.fullName} ({dep.relationship})
+                            {dep.age ? ` - ${dep.age} years` : ''}
+                          </option>
+                        ))}
+                      </select>
+
+                      {selectedDependent && (
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+                          <strong>Note:</strong> You will receive all notifications and handle all actions for this case. 
+                          Only the consultation meeting will involve {dependents.find(d => d.id === selectedDependent)?.fullName}.
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
           {/* Case Title */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">

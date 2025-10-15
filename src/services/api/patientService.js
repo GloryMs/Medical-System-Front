@@ -290,6 +290,50 @@ const patientService = {
     }
   },
 
+  // ============ DEPENDENT MANAGEMENT ============
+  
+  /**
+   * Get all dependents for the authenticated patient
+   */
+  getDependents: async () => {
+    const response = await api.get('/patient-service/api/patients/dependents');
+    return response;
+  },
+
+  /**
+   * Get a specific dependent by ID
+   */
+  getDependent: async (dependentId) => {
+    const response = await api.get(`/patient-service/api/patients/dependents/${dependentId}`);
+    return response;
+  },
+
+  /**
+   * Create a new dependent
+   */
+  createDependent: async (dependentData) => {
+    const response = await api.post('/patient-service/api/patients/dependents', dependentData);
+    return response;
+  },
+
+  /**
+   * Update a dependent
+   */
+  updateDependent: async (dependentId, dependentData) => {
+    const response = await api.put(
+      `/patient-service/api/patients/dependents/${dependentId}`, 
+      dependentData
+    );
+    return response;
+  },
+
+  /**
+   * Delete a dependent (soft delete)
+   */
+  deleteDependent: async (dependentId) => {
+    const response = await api.delete(`/patient-service/api/patients/dependents/${dependentId}`);
+    return response;
+  },
 
   // downloadCaseDocument: async (caseId, documentId, filename) => {
   //   try {

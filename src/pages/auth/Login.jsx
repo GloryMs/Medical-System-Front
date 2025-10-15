@@ -1,52 +1,54 @@
-import React, { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
-import { Eye, EyeOff, Mail, Lock, Stethoscope } from 'lucide-react';
-import Button from '../../components/common/Button';
+import * as yup from 'yup';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+// import Button from '../../components/auth/Button';
+import Button from '../../components/common/Button';
+import Input from '../../components/auth/Input';
+import RoleSelectionModal from '../../components/auth/RoleSelectionModal';
+import { Mail, Lock, AlertCircle, Stethoscope  } from 'lucide-react';
 
-// Validation schema
 const loginSchema = yup.object({
   email: yup
     .string()
-    .email('Please enter a valid email address')
+    .email('Invalid email format')
     .required('Email is required'),
   password: yup
     .string()
-    .min(8, 'Password must be at least 8 characters')
+    .min(6, 'Password must be at least 6 characters')
     .required('Password is required'),
 });
 
 const Login = () => {
-  const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
-  
-  const { login, googleLogin, isLoading, error } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
-  
-  const from = location.state?.from?.pathname || '/';
+  const { login, googleLogin } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [showRoleModal, setShowRoleModal] = useState(false);
+  const [pendingGoogleCredential, setPendingGoogleCredential] = useState(null);
 
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors },
     setError,
   } = useForm({
     resolver: yupResolver(loginSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-    },
   });
 
+  /**
+   * Handle traditional email/password login
+   */
   const onSubmit = async (data) => {
-    try {
-      const response = await login({ ...data, rememberMe });
-      console.log('Login successful:', response);
+    setIsLoading(true);
+    setErrorMessage('');
 
+    try {
+      const response = await login(data);
+      
       // Navigate based on user role
       const role = response.role;
       let dashboardRoute = '/app';
@@ -65,244 +67,333 @@ const Login = () => {
           dashboardRoute = '/app';
       }
       
-      console.log('Navigating to:', dashboardRoute);
-      
-      // Use window.location.href for a hard navigation to ensure page refresh
-      window.location.href = dashboardRoute;
-      
-      // Alternative: Use navigate with state reset
-      // navigate(dashboardRoute, { replace: true, state: { fromLogin: true } });
+      navigate(dashboardRoute);
     } catch (error) {
+      console.error('Login error:', error);
+      const message = error.response?.data?.message || 
+                     error.message || 
+                     'Login failed. Please check your credentials.';
+      setErrorMessage(message);
       setError('root', {
         type: 'manual',
-        message: error.message || 'Login failed. Please try again.',
+        message: message,
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleGoogleLogin = async () => {
+  /**
+   * Handle Google Sign-In button click
+   * Shows role selection modal first
+   */
+  const handleGoogleSignInClick = (credential) => {
+    // Store the credential and show role selection modal
+    setPendingGoogleCredential(credential);
+    setShowRoleModal(true);
+  };
+
+  /**
+   * Handle role selection from modal
+   * Completes the Google Sign-In with selected role
+   */
+  const handleRoleSelect = async (selectedRole) => {
+    if (!pendingGoogleCredential) return;
+
+    setGoogleLoading(true);
+    setErrorMessage('');
+
     try {
-      // This would integrate with Google OAuth
-      // For now, we'll simulate it
-      console.log('Google login clicked');
-      // const googleToken = await getGoogleToken();
-      // await googleLogin(googleToken);
-      // const role = response.role;
-      // let dashboardRoute = '/app';
-      // switch(role) {
-      //   case 'PATIENT':
-      //     dashboardRoute = '/app/patient/dashboard';
-      //     break;
-      //   case 'DOCTOR':
-      //     dashboardRoute = '/app/doctor/dashboard';
-      //     break;
-      //   case 'ADMIN':
-      //     dashboardRoute = '/app/admin/dashboard';
-      //     break;
-      // }
-      // window.location.href = dashboardRoute;
+      const response = await googleLogin({
+        idToken: pendingGoogleCredential,
+        role: selectedRole
+      });
+
+      // Close modal
+      setShowRoleModal(false);
+      
+      // Navigate based on role
+      let dashboardRoute = '/app';
+      switch(selectedRole) {
+        case 'PATIENT':
+          dashboardRoute = '/app/patient/dashboard';
+          break;
+        case 'DOCTOR':
+          dashboardRoute = '/app/doctor/dashboard';
+          break;
+        case 'ADMIN':
+          dashboardRoute = '/app/admin/dashboard';
+          break;
+        default:
+          dashboardRoute = '/app';
+      }
+      
+      navigate(dashboardRoute);
     } catch (error) {
+      console.error('Google Sign-In error:', error);
+      setErrorMessage('Google Sign-In failed. Please try again.');
       setError('root', {
         type: 'manual',
-        message: 'Google login failed. Please try again.',
+        message: 'Google Sign-In failed. Please try again.',
       });
+      setShowRoleModal(false);
+    } finally {
+      setGoogleLoading(false);
+      setPendingGoogleCredential(null);
     }
+  };
+
+  /**
+   * Handle Google Sign-In error
+   */
+  const handleGoogleError = (error) => {
+    console.error('Google Sign-In error:', error);
+    setErrorMessage('Google Sign-In failed. Please try again or use email login.');
+    setError('root', {
+      type: 'manual',
+      message: 'Google Sign-In failed. Please try again.',
+    });
+  };
+
+  /**
+   * Handle modal close
+   */
+  const handleModalClose = () => {
+    setShowRoleModal(false);
+    setPendingGoogleCredential(null);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        {/* Logo and Title */}
-        <div className="text-center">
-          <div className="flex justify-center">
-            <div className="bg-primary-500 p-3 rounded-full">
-              <Stethoscope className="w-8 h-8 text-white" />
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-8">
+          <div className="text-center">
+            <div className="flex justify-center">
+              <div className="w-16 h-16 bg-primary-500 rounded-2xl flex items-center justify-center mb-4">
+                <Stethoscope className="w-8 h-8 text-white" />
+              </div>
             </div>
+            <h2 className="text-3xl font-bold text-gray-900">Welcome Back</h2>
+            <p className="mt-2 text-sm text-gray-600">
+              Sign in to your Medical Consultation account
+            </p>
           </div>
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-            Sign in to your account
-          </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Or{' '}
-            <Link to="/register" className="font-medium text-primary-600 hover:text-primary-500">
-              create a new account
-            </Link>
-          </p>
-        </div>
 
-        {/* Error Message */}
-        {(error || errors.root) && (
-          <div className="rounded-md bg-red-50 p-4">
-            <div className="flex">
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-red-800">
-                  {error || errors.root?.message}
-                </h3>
+        {/* Login Form Card */}
+        <div className="bg-white rounded-xl shadow-md p-8 space-y-6">
+          {/* Error Message */}
+          {errorMessage && (
+            <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md flex items-start">
+              <AlertCircle className="w-5 h-5 text-red-500 mr-3 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm text-red-700">{errorMessage}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Google Sign-In Button */}
+          <div className="space-y-3">
+            <div id="google-signin-button" className="w-full"></div>
+            
+            {/* Initialize Google Sign-In */}
+            <GoogleSignInInitializer 
+              onCredentialReceived={handleGoogleSignInClick}
+              onError={handleGoogleError}
+            />
+            
+            {/* Divider */}
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-4 bg-white text-gray-500">
+                  Or continue with email
+                </span>
               </div>
             </div>
           </div>
-        )}
 
-        {/* Login Form */}
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
-          <div className="space-y-4">
+          {/* Email/Password Form */}
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             {/* Email Input */}
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email address
-              </label>
-              <div className="mt-1 relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  {...register('email')}
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  className={`appearance-none block w-full pl-10 pr-3 py-2 border ${
-                    errors.email ? 'border-red-300' : 'border-gray-300'
-                  } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm`}
-                  placeholder="Enter your email"
-                />
-              </div>
-              {errors.email && (
-                <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
-              )}
-            </div>
+            <Input
+              label="Email Address"
+              type="email"
+              placeholder="Enter your email"
+              icon={<Mail className="w-5 h-5" />}
+              error={errors.email?.message}
+              {...register('email')}
+            />
 
             {/* Password Input */}
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
-              </label>
-              <div className="mt-1 relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  {...register('password')}
-                  id="password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  className={`appearance-none block w-full pl-10 pr-10 py-2 border ${
-                    errors.password ? 'border-red-300' : 'border-gray-300'
-                  } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm`}
-                  placeholder="Enter your password"
-                />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  onClick={() => setShowPassword(!showPassword)}
+            <Input
+              label="Password"
+              type="password"
+              placeholder="Enter your password"
+              icon={<Lock className="w-5 h-5" />}
+              error={errors.password?.message}
+              {...register('password')}
+            />
+
+            {/* Forgot Password Link */}
+            <div className="flex items-center justify-between">
+              <div className="text-sm">
+                <Link
+                  to="/auth/forgot-password"
+                  className="font-medium text-primary-600 hover:text-primary-500 transition-colors"
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-500" />
-                  ) : (
-                    <Eye className="h-5 w-5 text-gray-400 hover:text-gray-500" />
-                  )}
-                </button>
+                  Forgot your password?
+                </Link>
               </div>
-              {errors.password && (
-                <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Remember Me and Forgot Password */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <input
-                id="remember-me"
-                name="remember-me"
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-              />
-              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
-                Remember me
-              </label>
             </div>
 
-            <div className="text-sm">
-              <Link
-                to="/forgot-password"
-                className="font-medium text-primary-600 hover:text-primary-500"
-              >
-                Forgot your password?
-              </Link>
-            </div>
-          </div>
-
-          {/* Submit Button */}
-          <div>
+            {/* Submit Button */}
             <Button
               type="submit"
-              variant="primary"
-              className="w-full"
-              isLoading={isSubmitting || isLoading}
-              disabled={isSubmitting || isLoading}
+              fullWidth
+              loading={isLoading}
+              disabled={isLoading || googleLoading}
             >
-              Sign in
+              {isLoading ? 'Signing in...' : 'Sign In'}
             </Button>
-          </div>
+          </form>
 
-          {/* Divider */}
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300" />
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-gray-50 text-gray-500">Or continue with</span>
-            </div>
+          {/* Sign Up Link */}
+          <div className="text-center pt-4 border-t border-gray-200">
+            <p className="text-sm text-gray-600">
+              Don't have an account?{' '}
+              <Link
+                to="/auth/register"
+                className="font-semibold text-primary-600 hover:text-primary-500 transition-colors"
+              >
+                Sign up now
+              </Link>
+            </p>
           </div>
+        </div>
 
-          {/* Google Login */}
-          <div>
-            <button
-              type="button"
-              onClick={handleGoogleLogin}
-              className="w-full flex justify-center items-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-            >
-              <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
-                <path
-                  fill="#4285F4"
-                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                />
-                <path
-                  fill="#EA4335"
-                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                />
-              </svg>
-              Sign in with Google
-            </button>
-          </div>
-        </form>
-
-        {/* Terms */}
-        <p className="text-center text-xs text-gray-600">
-          By signing in, you agree to our{' '}
-          <Link to="/terms" className="text-primary-600 hover:text-primary-500">
-            Terms of Service
-          </Link>{' '}
-          and{' '}
-          <Link to="/privacy" className="text-primary-600 hover:text-primary-500">
-            Privacy Policy
-          </Link>
-        </p>
+        {/* Footer - Removed Terms/Privacy as it's not in Register */}
       </div>
+
+      {/* Role Selection Modal */}
+      <RoleSelectionModal
+        isOpen={showRoleModal}
+        onClose={handleModalClose}
+        onRoleSelect={handleRoleSelect}
+        loading={googleLoading}
+      />
     </div>
   );
+};
+
+/**
+ * Component to initialize Google Sign-In
+ */
+const GoogleSignInInitializer = ({ onCredentialReceived, onError }) => {
+  const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
+
+  // DEBUG: Check if Client ID is loaded
+  console.log('Google Client ID:', GOOGLE_CLIENT_ID);
+  
+  React.useEffect(() => {
+    // Check if Client ID is valid
+    if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID === 'undefined') {
+      console.error('ERROR: REACT_APP_GOOGLE_CLIENT_ID is not defined in .env file');
+      onError(new Error('Google Client ID not configured'));
+      return;
+    }
+
+    // Check if script already loaded
+    if (window.google?.accounts?.id) {
+      initializeGoogleSignIn();
+      return;
+    }
+
+    // Load Google Sign-In script
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    
+    script.onload = () => {
+      console.log('Google Sign-In script loaded successfully');
+      // Wait a bit for Google to initialize
+      setTimeout(() => {
+        if (window.google?.accounts?.id) {
+          initializeGoogleSignIn();
+        } else {
+          console.error('Google Sign-In API not available after script load');
+          onError(new Error('Failed to initialize Google Sign-In'));
+        }
+      }, 100);
+    };
+
+    script.onerror = () => {
+      console.error('Failed to load Google Sign-In script');
+      onError(new Error('Failed to load Google Sign-In'));
+    };
+
+    document.body.appendChild(script);
+
+    return () => {
+      // Cleanup: remove script when component unmounts
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
+    };
+  }, [GOOGLE_CLIENT_ID, onError]);
+
+  const initializeGoogleSignIn = () => {
+    try {
+      console.log('Initializing Google Sign-In with Client ID:', GOOGLE_CLIENT_ID);
+      
+      // Initialize Google Sign-In
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleCredentialResponse,
+        auto_select: false,
+        cancel_on_tap_outside: true
+      });
+
+      // Render the button
+      const buttonDiv = document.getElementById('google-signin-button');
+      if (buttonDiv) {
+        // Clear any existing content
+        buttonDiv.innerHTML = '';
+        
+        window.google.accounts.id.renderButton(
+          buttonDiv,
+          {
+            theme: 'outline',
+            size: 'large',
+            text: 'signin_with',
+            shape: 'rectangular',
+            logo_alignment: 'left',
+            width: buttonDiv.offsetWidth || 350
+          }
+        );
+        console.log('Google Sign-In button rendered successfully');
+      } else {
+        console.error('google-signin-button div not found');
+      }
+    } catch (error) {
+      console.error('Error initializing Google Sign-In:', error);
+      onError(error);
+    }
+  };
+
+  const handleCredentialResponse = (response) => {
+    console.log('Received credential response from Google');
+    if (response.credential) {
+      console.log('Credential received, length:', response.credential.length);
+      onCredentialReceived(response.credential);
+    } else {
+      console.error('No credential in response');
+      onError(new Error('No credential received'));
+    }
+  };
+
+  return null;
 };
 
 export default Login;

@@ -26,18 +26,38 @@ const authService = {
     return response;
   },
 
-  // Google OAuth login
-  googleLogin: async (googleToken) => {
-    const response = await api.post('/auth-service/api/auth/google', { token: googleToken });
-    
-    // Store tokens and user info
-    if (response.accessToken) {
-      localStorage.setItem('accessToken', response.accessToken);
-      localStorage.setItem('refreshToken', response.refreshToken);
-      localStorage.setItem('user', JSON.stringify(response.user));
+
+ /**
+   * Google OAuth login
+   * @param {Object} data - Contains idToken and role
+   * @param {string} data.idToken - Google ID token from Sign-In
+   * @param {string} data.role - User role (PATIENT, DOCTOR, ADMIN)
+   */
+  googleLogin: async (data) => {
+    try {
+      const response = await api.post('/auth-service/api/auth/google', data);
+      
+      // Store tokens and user info
+      if (response && response.token) {
+        localStorage.setItem('accessToken', response.token);
+        if (response.refreshToken) {
+          localStorage.setItem('refreshToken', response.refreshToken);
+        }
+        
+        const userData = {
+          id: response.userId,
+          email: response.email,
+          role: response.role,
+          fullName: response.fullName
+        };
+        localStorage.setItem('user', JSON.stringify(userData));
+      }
+      
+      return response;
+    } catch (error) {
+      console.error('Google login error:', error);
+      throw error;
     }
-    
-    return response;
   },
 
   // Logout
@@ -75,20 +95,38 @@ const authService = {
     return response;
   },
 
-  // Forgot password
-  forgotPassword: async (email) => {
-    const response = await api.post('/api/auth/forgot-password', { email });
-    return response;
-  },
-
-  // Reset password
-  resetPassword: async (token, newPassword) => {
-    const response = await api.post('/api/auth/reset-password', {
-      token,
-      newPassword
+    // Request password reset - NEW METHOD
+  requestPasswordReset: async (identifier) => {
+    const response = await api.post('/auth-service/api/auth/password-reset/request', { 
+      identifier 
     });
     return response;
   },
+
+  // Verify reset code and reset password - NEW METHOD
+  verifyResetCode: async (data) => {
+    const response = await api.post('/auth-service/api/auth/password-reset/verify', {
+      identifier: data.identifier,
+      code: data.code,
+      newPassword: data.newPassword
+    });
+    return response;
+  },
+
+  // // Forgot password
+  // forgotPassword: async (email) => {
+  //   const response = await api.post('/api/auth/forgot-password', { email });
+  //   return response;
+  // },
+
+  // // Reset password
+  // resetPassword: async (token, newPassword) => {
+  //   const response = await api.post('/api/auth/reset-password', {
+  //     token,
+  //     newPassword
+  //   });
+  //   return response;
+  // },
 
   // Change password (authenticated user)
   changePassword: async (currentPassword, newPassword) => {
