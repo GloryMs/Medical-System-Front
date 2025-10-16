@@ -86,6 +86,9 @@ const patientService = {
     formData.append('requiresSecondOpinion', caseData.requiresSecondOpinion || false);
     formData.append('minDoctorsRequired', caseData.minDoctorsRequired || 1);
     formData.append('maxDoctorsAllowed', caseData.maxDoctorsAllowed || 2);
+
+    //Add case dependent if existed
+    formData.append('dependentId', caseData.dependentId || null);
     
     // Add files if any
     if (caseData.files && Array.isArray(caseData.files)) {

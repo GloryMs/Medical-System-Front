@@ -443,6 +443,8 @@ const CreateCase = () => {
         files: uploadedFiles.map(f => f.file)
       };
 
+      console.log('dependentId = ' + selectedDependent);
+
       // Create case with files using multipart form data
       const newCase = await execute(() => 
         patientService.createCase(caseData, (progressEvent) => {

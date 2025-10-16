@@ -386,14 +386,54 @@ const DoctorCasesManagement = () => {
   };
 
   // Send message to patient
-  const handleSendMessage = (case_) => {
+  // const handleSendMessage = (case_) => {
+
+  //   const patientData = execute(() => doctorService.getCustomPatientInfo(case_.id));
+
+  //   console.log( 'patientName:'+ patientData.fullName );
+  //   console.log( 'patientId:'+ patientData.userId );
+
+  //   navigate(`/app/doctor/communication`, {
+  //     state: { 
+  //       patientId: patientData.userId,
+  //       patientName: patientData.fullName,
+  //       caseId: case_.id
+  //     }
+  //   });
+  // };
+
+
+  //New Send message to patient
+  const handleSendMessage = async (case_) => {
+  // Navigate immediately without waiting
     navigate(`/app/doctor/communication`, {
       state: { 
-        patientId: case_.patientId,
-        patientName: case_.patientName,
+        patientId: null, // Will be set after fetch
+        patientName: 'Loading...', // Placeholder
         caseId: case_.id
       }
     });
+
+    // Fetch patient data asynchronously
+    try {
+      const patientData = await execute(() => doctorService.getCustomPatientInfo(case_.id));
+      
+      console.log('patientName:', patientData.fullName);
+      console.log('patientId:', patientData.userId);
+
+      // Update the navigation state with actual data
+      navigate(`/app/doctor/communication`, {
+        state: { 
+          patientId: patientData.userId,
+          patientName: patientData.fullName,
+          caseId: case_.id
+        },
+        replace: true // Replace the current history entry to avoid duplicates
+      });
+    } catch (error) {
+      console.error('Error fetching patient data:', error);
+      // Optionally handle error - maybe navigate back or show error message
+    }
   };
 
   // View case report

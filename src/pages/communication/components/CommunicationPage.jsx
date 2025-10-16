@@ -84,12 +84,18 @@ const CommunicationPage = () => {
         id: null,
         caseId: caseId,
         title: `Case #${caseId}`,
-        otherUserName: location.state?.patientName || location.state?.doctorName || 'User',
+        patientName: location.state?.patientName || 'Patient',
+        doctorName: user?.fullName ||'Doctor',
+        //otherUserName: location.state?.patientName || location.state?.doctorName || 'User',
         otherUserId: location.state?.patientId || location.state?.doctorId,
         isNew: true,
         unreadCount: 0,
         totalMessagesCount: 0
       };
+
+      console.log( 'patientName:' +  location.state?.patientName || 'Not found');
+      console.log( 'patientId:' +  location.state?.patientId || 'Not found');
+
       setSelectedConversation(tempConversation);
     }
   };

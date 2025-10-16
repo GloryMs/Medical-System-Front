@@ -103,9 +103,17 @@ const ConversationView = ({ conversation, onNewMessage, onConversationUpdate }) 
         receiverId: conversation.otherUserId,
         caseId: conversation.caseId,
         content,
+        patientName: conversation.patientName,
+        doctorName: conversation.doctorName,
         messageType: attachments && attachments.length > 0 ? 'FILE' : 'TEXT',
         attachmentIds: attachments?.map(a => a.id) || []
       };
+
+      console.log('caseId: ' + conversation.caseId);
+      console.log('receiverId: ' + conversation.otherUserId);
+      console.log('patientName: ' + conversation.patientName);
+      console.log('doctorName: ' + conversation.doctorName);
+
 
       const sentMessage = await execute(() => messageService.sendMessage(messageData));
       

@@ -106,6 +106,7 @@ const DoctorCaseDetails = () => {
   // Main state
   const [caseDetails, setCaseDetails] = useState(null);
   const [patientInfo, setPatientInfo] = useState(null);
+  const [isDependent, setIsDependent] = useState(false);
   const [attachments, setAttachments] = useState([]);
   
   // Document viewer state
@@ -157,11 +158,18 @@ const DoctorCaseDetails = () => {
       // Load patient information using getCustomPatientInfo from doctorService
       try {
         const patientData = await execute(() => doctorService.getCustomPatientInfo(caseId));
+        
+        // DETECT IF CASE IS FOR DEPENDENT
+        const isDependentCase = foundCase.dependentId != null && foundCase.dependentId > 0;
+        
+        setIsDependent(isDependentCase);
         setPatientInfo(patientData);
+        
+        console.log('Is dependent case:', isDependentCase);
       } catch (error) {
         console.error('Failed to load patient info:', error);
       }
-      
+
       // Load case attachments
       try {
         const attachmentsData = await execute(() => patientService.getCaseAttachments(caseId));
@@ -184,6 +192,19 @@ const DoctorCaseDetails = () => {
     } finally {
       setRefreshing(false);
     }
+  };
+
+  //Helper function to calculate the age
+  const calculateAge = (dateOfBirth) => {
+    if (!dateOfBirth) return 'N/A';
+    const today = new Date();
+    const birthDate = new Date(dateOfBirth);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
   };
 
   // View document in modal with embedded viewer
@@ -549,10 +570,24 @@ const DoctorCaseDetails = () => {
               <div className="space-y-6">
                 {/* Patient Quick Info */}
                 {patientInfo && (
-                  <Card>
+                  <Card title={isDependent ? "Family Member Profile" : "Patient Profile"}>
+                    {isDependent && (
+                      <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="flex items-center space-x-2">
+                          <Users className="w-4 h-4 text-blue-600" />
+                          <span className="text-sm font-medium text-blue-900">
+                            This case is for a family member
+                          </span>
+                        </div>
+                      </div>
+                    )}
                     <div className="flex items-start space-x-4 mb-4">
-                      <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center shadow-lg">
-                        <User className="w-8 h-8 text-white" />
+                      <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+                        {isDependent ? (
+                          <Users className="w-8 h-8 text-blue-600" />
+                        ) : (
+                          <User className="w-8 h-8 text-blue-600" />
+                        )}
                       </div>
                       <div className="flex-1">
                         <h3 className="text-lg font-semibold text-gray-900">{patientInfo.fullName}</h3>
@@ -747,7 +782,9 @@ const DoctorCaseDetails = () => {
                             className="w-full"
                             icon={<MessageSquare className="w-4 h-4" />}
                             onClick={() => navigate('/app/doctor/communication', {
-                              state: { patientId: patientInfo.id, caseId: caseDetails.id }
+                              state: { patientId: patientInfo.userId,
+                                 patientName: patientInfo.fullName,
+                                caseId: caseDetails.id }
                             })}
                           >
                             Send Message to Patient
@@ -876,9 +913,25 @@ const DoctorCaseDetails = () => {
         {/* Patient Tab */}
         {activeTab === 'patient' && patientInfo && (
           <div className="p-6">
+            {isDependent && (
+              <div className="mb-6 p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
+                <div className="flex items-start space-x-3">
+                  <Users className="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <h3 className="text-sm font-semibold text-blue-900 mb-1">
+                      Family Member Information
+                    </h3>
+                    <p className="text-sm text-blue-700">
+                      This case was submitted for a family member. The information below belongs to the family member, not the account holder.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+    
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-6">
-                <Card title="Patient Information">
+                <Card title={isDependent ? "Family Member Information" : "Patient Information"}>
                   <div className="grid grid-cols-2 gap-6">
                     <div>
                       <h3 className="text-sm font-medium text-gray-500 mb-1">Full Name</h3>
