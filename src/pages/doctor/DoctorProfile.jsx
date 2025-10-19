@@ -22,7 +22,16 @@ const DoctorProfile = () => {
     contact: false
   });
 
+  // Medical configurations
   const [specializations, setSpecializations] = useState([]);
+  const [subSpecializations, setSubSpecializations] = useState([]);
+  const [diseases, setDiseases] = useState([]);
+  const [symptoms, setSymptoms] = useState([]);
+  
+  // Selected values for multi-select fields
+  const [selectedSubSpecializations, setSelectedSubSpecializations] = useState([]);
+  const [selectedDiseases, setSelectedDiseases] = useState([]);
+  const [selectedSymptoms, setSelectedSymptoms] = useState([]);
 
   const professionalForm = useForm();
   const specializationForm = useForm();
@@ -31,11 +40,12 @@ const DoctorProfile = () => {
 
   useEffect(() => {
     loadProfile();
-    loadSpecializations();
+    loadMedicalConfigurations();
   }, []);
 
   useEffect(() => {
     if (profile) {
+      // Reset professional form
       professionalForm.reset({
         fullName: profile.fullName || '',
         licenseNumber: profile.licenseNumber || '',
@@ -47,6 +57,7 @@ const DoctorProfile = () => {
         hospitalAffiliation: profile.hospitalAffiliation || ''
       });
 
+      // Reset contact form
       contactForm.reset({
         phoneNumber: profile.phoneNumber || '',
         email: profile.email || '',
@@ -55,6 +66,7 @@ const DoctorProfile = () => {
         country: profile.country || ''
       });
 
+      // Reset pricing form
       pricingForm.reset({
         hourlyRate: profile.hourlyRate || '',
         caseRate: profile.caseRate || profile.baseConsultationFee || '',
@@ -62,12 +74,18 @@ const DoctorProfile = () => {
         maxConcurrentCases: profile.maxConcurrentCases || 10
       });
 
+      // Reset specialization form
       specializationForm.reset({
-        primarySpecializationCode: profile.primarySpecializationCode || profile.primarySpecialization || '',
+        primarySpecialization: profile.primarySpecialization || '',
         acceptsSecondOpinions: profile.acceptsSecondOpinions ?? true,
         acceptsComplexCases: profile.acceptsComplexCases ?? true,
         acceptsUrgentCases: profile.acceptsUrgentCases ?? true
       });
+
+      // Set multi-select values
+      setSelectedSubSpecializations(profile.subSpecializations || []);
+      setSelectedDiseases(profile.diseaseExpertiseCodes || []);
+      setSelectedSymptoms(profile.symptomExpertiseCodes || []);
     }
   }, [profile]);
 
@@ -80,12 +98,22 @@ const DoctorProfile = () => {
     }
   };
 
-  const loadSpecializations = async () => {
+  const loadMedicalConfigurations = async () => {
     try {
-      const data = await execute(() => commonService.getMedicalConfigurations('SPECIALIZATION'));
-      setSpecializations(data || []);
+      // Load all configurations in parallel
+      const [specs, subSpecs, diseaseData, symptomData] = await Promise.all([
+        execute(() => commonService.getMedicalConfigurations('SPECIALIZATION')),
+        execute(() => commonService.getMedicalConfigurations('SUBSPECIALIZATION')),
+        execute(() => commonService.getMedicalConfigurations('diseases')),
+        execute(() => commonService.getMedicalConfigurations('symptoms'))
+      ]);
+      
+      setSpecializations(specs || []);
+      setSubSpecializations(subSpecs || []);
+      setDiseases(diseaseData || []);
+      setSymptoms(symptomData || []);
     } catch (error) {
-      console.error('Failed to load specializations:', error);
+      console.error('Failed to load medical configurations:', error);
     }
   };
 
@@ -101,7 +129,15 @@ const DoctorProfile = () => {
 
   const handleSpecializationSubmit = async (data) => {
     try {
-      const updatedProfile = await execute(() => doctorService.updateProfile(data));
+      // Include multi-select values in the update
+      const updateData = {
+        ...data,
+        subSpecializations: selectedSubSpecializations,
+        diseaseExpertiseCodes: selectedDiseases,
+        symptomExpertiseCodes: selectedSymptoms
+      };
+      
+      const updatedProfile = await execute(() => doctorService.updateProfile(updateData));
       setProfile(updatedProfile);
       setIsEditing({ ...isEditing, specialization: false });
     } catch (error) {
@@ -152,13 +188,54 @@ const DoctorProfile = () => {
 
   const getProfileCompletionPercentage = () => {
     if (!profile) return 0;
-    const fields = ['fullName', 'licenseNumber', 'primarySpecialization', 'yearsOfExperience', 'phoneNumber', 'email', 'qualifications', 'professionalSummary'];
+    const fields = ['fullName', 'licenseNumber', 'primarySpecialization', 'yearsOfExperience', 
+                   'phoneNumber', 'email', 'qualifications', 'professionalSummary'];
     const completedFields = fields.filter(field => {
-      const value = profile[field] || profile[`${field}Code`];
-      return value && value !== '';
+      const value = profile[field];
+      return value && value !== '' && value !== 0;
     });
     return Math.round((completedFields.length / fields.length) * 100);
   };
+
+  // Helper function to get filtered subspecializations based on primary specialization
+  const getFilteredSubSpecializations = () => {
+    const primarySpec = specializationForm.watch('primarySpecialization');
+    if (!primarySpec) return [];
+    return subSpecializations.filter(sub => sub.parentCode === primarySpec);
+  };
+
+  // Multi-select handlers
+  const toggleSubSpecialization = (code) => {
+    setSelectedSubSpecializations(prev => 
+      prev.includes(code) 
+        ? prev.filter(c => c !== code)
+        : [...prev, code]
+    );
+  };
+
+  const toggleDisease = (code) => {
+    setSelectedDiseases(prev => 
+      prev.includes(code) 
+        ? prev.filter(c => c !== code)
+        : [...prev, code]
+    );
+  };
+
+  const toggleSymptom = (code) => {
+    setSelectedSymptoms(prev => 
+      prev.includes(code) 
+        ? prev.filter(c => c !== code)
+        : [...prev, code]
+    );
+  };
+
+  if (!profile && loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
 
   const tabs = [
     { id: 'professional', label: 'Professional Info', icon: <User className="w-4 h-4" /> },
@@ -167,13 +244,6 @@ const DoctorProfile = () => {
     { id: 'contact', label: 'Contact Info', icon: <Phone className="w-4 h-4" /> }
   ];
 
-  if (loading && !profile) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -317,9 +387,14 @@ const DoctorProfile = () => {
             <Card title="Specialization & Expertise">
               <form onSubmit={specializationForm.handleSubmit(handleSpecializationSubmit)}>
                 <div className="p-6 space-y-6">
+                  {/* Primary Specialization */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Primary Specialization *</label>
-                    <select {...specializationForm.register('primarySpecializationCode')} disabled={!isEditing.specialization} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50 disabled:text-gray-500">
+                    <select 
+                      {...specializationForm.register('primarySpecialization')} 
+                      disabled={!isEditing.specialization} 
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50 disabled:text-gray-500"
+                    >
                       <option value="">Select specialization</option>
                       {specializations.map(spec => (
                         <option key={spec.code} value={spec.code}>{spec.name}</option>
@@ -327,6 +402,121 @@ const DoctorProfile = () => {
                     </select>
                   </div>
 
+                  {/* Sub-Specializations */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Sub-Specializations</label>
+                    {!isEditing.specialization ? (
+                      <div className="flex flex-wrap gap-2">
+                        {selectedSubSpecializations.length > 0 ? (
+                          selectedSubSpecializations.map(code => {
+                            const subSpec = subSpecializations.find(s => s.code === code);
+                            return (
+                              <span key={code} className="px-3 py-1 bg-primary-100 text-primary-700 rounded-full text-sm">
+                                {subSpec?.name || code}
+                              </span>
+                            );
+                          })
+                        ) : (
+                          <span className="text-gray-500 text-sm">No sub-specializations selected</span>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="border border-gray-300 rounded-lg p-3 max-h-48 overflow-y-auto">
+                        <div className="space-y-2">
+                          {getFilteredSubSpecializations().map(subSpec => (
+                            <label key={subSpec.code} className="flex items-center cursor-pointer hover:bg-gray-50 p-1 rounded">
+                              <input
+                                type="checkbox"
+                                checked={selectedSubSpecializations.includes(subSpec.code)}
+                                onChange={() => toggleSubSpecialization(subSpec.code)}
+                                className="mr-2 text-primary-600 focus:ring-primary-500"
+                              />
+                              <span className="text-sm">{subSpec.name}</span>
+                            </label>
+                          ))}
+                          {getFilteredSubSpecializations().length === 0 && (
+                            <span className="text-gray-500 text-sm">Select a primary specialization first</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Disease Expertise */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Disease Expertise</label>
+                    {!isEditing.specialization ? (
+                      <div className="flex flex-wrap gap-2">
+                        {selectedDiseases.length > 0 ? (
+                          selectedDiseases.map(code => {
+                            const disease = diseases.find(d => d.icdCode === code || d.code === code);
+                            return (
+                              <span key={code} className="px-3 py-1 bg-primary-100 text-primary-700 rounded-full text-sm">
+                                {disease?.name || code}
+                              </span>
+                            );
+                          })
+                        ) : (
+                          <span className="text-gray-500 text-sm">No disease expertise selected</span>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="border border-gray-300 rounded-lg p-3 max-h-48 overflow-y-auto">
+                        <div className="space-y-2">
+                          {diseases.map(disease => (
+                            <label key={disease.icdCode || disease.code} className="flex items-center cursor-pointer hover:bg-gray-50 p-1 rounded">
+                              <input
+                                type="checkbox"
+                                checked={selectedDiseases.includes(disease.icdCode || disease.code)}
+                                onChange={() => toggleDisease(disease.icdCode || disease.code)}
+                                className="mr-2 text-primary-600 focus:ring-primary-500"
+                              />
+                              <span className="text-sm">{disease.name} ({disease.icdCode || disease.code})</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Symptom Expertise */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Symptom Expertise</label>
+                    {!isEditing.specialization ? (
+                      <div className="flex flex-wrap gap-2">
+                        {selectedSymptoms.length > 0 ? (
+                          selectedSymptoms.map(code => {
+                            const symptom = symptoms.find(s => s.code === code);
+                            return (
+                              <span key={code} className="px-3 py-1 bg-primary-100 text-primary-700 rounded-full text-sm">
+                                {symptom?.name || code}
+                              </span>
+                            );
+                          })
+                        ) : (
+                          <span className="text-gray-500 text-sm">No symptom expertise selected</span>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="border border-gray-300 rounded-lg p-3 max-h-48 overflow-y-auto">
+                        <div className="space-y-2">
+                          {symptoms.map(symptom => (
+                            <label key={symptom.code} className="flex items-center cursor-pointer hover:bg-gray-50 p-1 rounded">
+                              <input
+                                type="checkbox"
+                                checked={selectedSymptoms.includes(symptom.code)}
+                                onChange={() => toggleSymptom(symptom.code)}
+                                className="mr-2 text-primary-600 focus:ring-primary-500"
+                              />
+                              <span className="text-sm">{symptom.name}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Case Preferences */}
                   <div className="border-t pt-6">
                     <h3 className="text-lg font-medium text-gray-900 mb-4">Case Preferences</h3>
                     <div className="space-y-4">
@@ -335,23 +525,38 @@ const DoctorProfile = () => {
                           <div className="font-medium text-gray-900">Accept Second Opinions</div>
                           <div className="text-sm text-gray-600">Willing to provide second opinion consultations</div>
                         </div>
-                        <input type="checkbox" {...specializationForm.register('acceptsSecondOpinions')} disabled={!isEditing.specialization} className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500 disabled:opacity-50" />
+                        <input 
+                          type="checkbox" 
+                          {...specializationForm.register('acceptsSecondOpinions')} 
+                          disabled={!isEditing.specialization} 
+                          className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500 disabled:opacity-50" 
+                        />
                       </label>
 
                       <label className="flex items-center justify-between cursor-pointer">
                         <div>
                           <div className="font-medium text-gray-900">Accept Complex Cases</div>
-                          <div className="text-sm text-gray-600">Willing to handle complex medical cases</div>
+                          <div className="text-sm text-gray-600">Handle high-complexity medical cases</div>
                         </div>
-                        <input type="checkbox" {...specializationForm.register('acceptsComplexCases')} disabled={!isEditing.specialization} className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500 disabled:opacity-50" />
+                        <input 
+                          type="checkbox" 
+                          {...specializationForm.register('acceptsComplexCases')} 
+                          disabled={!isEditing.specialization} 
+                          className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500 disabled:opacity-50" 
+                        />
                       </label>
 
                       <label className="flex items-center justify-between cursor-pointer">
                         <div>
                           <div className="font-medium text-gray-900">Accept Urgent Cases</div>
-                          <div className="text-sm text-gray-600">Available for urgent consultations</div>
+                          <div className="text-sm text-gray-600">Available for time-sensitive consultations</div>
                         </div>
-                        <input type="checkbox" {...specializationForm.register('acceptsUrgentCases')} disabled={!isEditing.specialization} className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500 disabled:opacity-50" />
+                        <input 
+                          type="checkbox" 
+                          {...specializationForm.register('acceptsUrgentCases')} 
+                          disabled={!isEditing.specialization} 
+                          className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500 disabled:opacity-50" 
+                        />
                       </label>
                     </div>
                   </div>
@@ -359,7 +564,20 @@ const DoctorProfile = () => {
                   <div className="flex justify-end space-x-3 pt-6 border-t">
                     {isEditing.specialization ? (
                       <>
-                        <Button type="button" variant="outline" onClick={() => { setIsEditing({ ...isEditing, specialization: false }); specializationForm.reset(); }}>Cancel</Button>
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          onClick={() => { 
+                            setIsEditing({ ...isEditing, specialization: false }); 
+                            specializationForm.reset();
+                            // Reset to original values
+                            setSelectedSubSpecializations(profile?.subSpecializations || []);
+                            setSelectedDiseases(profile?.diseaseExpertiseCodes || []);
+                            setSelectedSymptoms(profile?.symptomExpertiseCodes || []);
+                          }}
+                        >
+                          Cancel
+                        </Button>
                         <Button type="submit" icon={<Save className="w-4 h-4" />} loading={loading}>Save Changes</Button>
                       </>
                     ) : (
@@ -370,7 +588,6 @@ const DoctorProfile = () => {
               </form>
             </Card>
           )}
-
           {activeTab === 'pricing' && (
             <Card title="Consultation Fees & Capacity">
               <form onSubmit={pricingForm.handleSubmit(handlePricingSubmit)}>
