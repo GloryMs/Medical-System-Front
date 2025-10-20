@@ -20,6 +20,7 @@ import {
   ArrowDown,
   MoreVertical,
   Download,
+  Star,
   User
 } from 'lucide-react';
 
@@ -31,6 +32,8 @@ import { useAuth } from '../../hooks/useAuth';
 import { useApi } from '../../hooks/useApi';
 import patientService from '../../services/api/patientService';
 import toast from '../../utils/toast';
+import SimpleRatingModal from '../../components/common/SimpleRatingModal';
+import CaseStatusLifecyclePopup from '../../components/common/CaseStatusLifecyclePopup'; 
 
 const PatientCases = () => {
   const navigate = useNavigate();
@@ -50,6 +53,15 @@ const PatientCases = () => {
   const [sortField, setSortField] = useState('createdAt');
   const [sortDirection, setSortDirection] = useState('desc');
   const [openActionMenu, setOpenActionMenu] = useState(null);
+
+  //Rating:
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [selectedCaseForRating, setSelectedCaseForRating] = useState(null);
+  const [ratingLoading, setRatingLoading] = useState(false);
+
+  //Case status lifecycle popup
+  const [showLifecyclePopup, setShowLifecyclePopup] = useState(false);
+  const [selectedCaseStatus, setSelectedCaseStatus] = useState(null);
 
   // Load data on component mount
   useEffect(() => {
@@ -89,6 +101,11 @@ const PatientCases = () => {
     } catch (error) {
       console.error('Failed to load cases:', error);
     }
+  };
+
+  const handleShowLifecycle = (status) => {
+    setSelectedCaseStatus(status);
+    setShowLifecyclePopup(true);
   };
 
   const handleCreateCase = () => {
@@ -222,7 +239,7 @@ const PatientCases = () => {
           </Button>
         </Link>
 
-        {caseItem.status === 'SUBMITTED' && (
+        {['SUBMITTED', 'PENDING'].includes(caseItem.status) && (
           <Button
             variant="outline"
             size="sm"
@@ -230,6 +247,17 @@ const PatientCases = () => {
             onClick={() => navigate(`/patient/cases/${caseItem.id}/edit`)}
           >
             Edit
+          </Button>
+        )}
+
+        {caseItem.status === 'CONSULTATION_COMPLETE'  && ( //&& caseItem.assignedDoctor
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={<Star className="w-4 h-4" />}
+            onClick={() => handleOpenRatingModal(caseItem)}
+          >
+            Rate
           </Button>
         )}
 
@@ -284,7 +312,7 @@ const PatientCases = () => {
               View Details
             </Link>
 
-            {caseItem.status === 'SUBMITTED' && (
+            {['SUBMITTED', 'PENDING'].includes(caseItem.status) && (
               <button
                 onClick={() => {
                   navigate(`/patient/cases/${caseItem.id}/edit`);
@@ -310,6 +338,17 @@ const PatientCases = () => {
               </button>
             )}
 
+            {caseItem.status === 'CONSULTATION_COMPLETE'  && ( //&& caseItem.assignedDoctor
+              <button
+                onClick={() => handleOpenRatingModal(caseItem)}
+                className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                <Star className="w-4 h-4 mr-3" />
+                Rate
+              </button>
+            )}
+
+
             {['SUBMITTED', 'REJECTED', 'PENDING'].includes(caseItem.status) && (
               <>
                 <div className="border-t border-gray-100 my-1"></div>
@@ -330,6 +369,39 @@ const PatientCases = () => {
         )}
       </div>
     );
+  };
+
+  const handleOpenRatingModal = (caseItem) => {
+    setSelectedCaseForRating(caseItem);
+    setShowRatingModal(true);
+  };
+
+  const handleSubmitRating = async (rating) => {
+    if (!selectedCaseForRating?.assignedDoctor?.id) {
+      toast.error('Doctor information not available', 'error');
+      return;
+    }
+
+    setRatingLoading(true);
+    try {
+      await patientService.rateDoctor(selectedCaseForRating.assignedDoctor.id, {
+        caseId: selectedCaseForRating.id,
+        rating: rating
+      });
+
+      toast.success('Rating submitted successfully!', 'success');
+      setShowRatingModal(false);
+      setSelectedCaseForRating(null);
+      
+      if (typeof loadCases === 'function') {
+        loadCases();
+      }
+    } catch (error) {
+      console.error('Error submitting rating:', error);
+      toast.error(error.response?.data?.message || 'Failed to submit rating', 'error');
+    } finally {
+      setRatingLoading(false);
+    }
   };
 
   return (
@@ -547,8 +619,10 @@ const PatientCases = () => {
                                 {caseItem.description}
                               </p>
                             </div>
-                            <div className="flex items-center space-x-2 ml-4">
-                              <StatusBadge status={caseItem.status} />
+                            <div className="flex items-center space-x-2 ml-4 animate-pulse">
+                              <StatusBadge status={caseItem.status} 
+                                onClick={() => handleShowLifecycle(caseItem.status)}
+                              />
                               <PriorityBadge priority={caseItem.urgencyLevel} />
                             </div>
                           </div>
@@ -748,6 +822,27 @@ const PatientCases = () => {
         type="error"
         isLoading={loading}
       />
+
+      {showRatingModal && selectedCaseForRating && (
+        <SimpleRatingModal
+          isOpen={showRatingModal}
+          onClose={() => {
+            setShowRatingModal(false);
+            setSelectedCaseForRating(null);
+          }}
+          onSubmit={handleSubmitRating}
+          doctorName={selectedCaseForRating.assignedDoctor?.name || 'Doctor'}
+          loading={ratingLoading}
+        />
+      )}
+
+      {/* Lifecycle Popup */}
+      <CaseStatusLifecyclePopup
+        isOpen={showLifecyclePopup}
+        onClose={() => setShowLifecyclePopup(false)}
+        currentStatus={selectedCaseStatus}
+      />
+
     </div>
   );
 };

@@ -101,8 +101,6 @@ const patientService = {
   },
 
 
-  // Replace the viewCaseDocument method in your patientService.js with this more robust version:
-
 // Replace your document methods in patientService.js with these corrected versions:
 
   viewCaseDocument: async (caseId, documentId) => {
@@ -291,6 +289,11 @@ const patientService = {
       alert('Failed to download document. Please try again.');
       throw error;
     }
+  },
+
+  rateDoctor: async (doctorId, ratingData) => {
+    const response = await api.post(`/doctor/${doctorId}/rate`, ratingData);
+    return response.data;
   },
 
   // ============ DEPENDENT MANAGEMENT ============

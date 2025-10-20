@@ -18,11 +18,13 @@ import {
   Stethoscope,
   Pill,
   Activity,
+  Star,
   Heart,
   Save,
   X
 } from 'lucide-react';
 
+import SimpleRatingModal from '../../components/common/SimpleRatingModal';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Badge, { StatusBadge, PriorityBadge } from '../../components/common/Badge';
@@ -31,6 +33,9 @@ import { useAuth } from '../../hooks/useAuth';
 import { useApi } from '../../hooks/useApi';
 import patientService from '../../services/api/patientService';
 import commonService from '../../services/api/commonService';
+import { toast } from 'react-toastify';
+import CaseStatusLifecyclePopup from '../../components/common/CaseStatusLifecyclePopup'; 
+import { Info, HelpCircle } from 'lucide-react';
 
 // Helper functions
 const formatDate = (dateString) => {
@@ -63,6 +68,13 @@ const CaseDetails = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
+
+  //Rating:
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [ratingLoading, setRatingLoading] = useState(false);
+
+  //Status popup
+  const [showLifecyclePopup, setShowLifecyclePopup] = useState(false);
 
   // Medication editing states
   const [isEditingMedications, setIsEditingMedications] = useState(false);
@@ -177,6 +189,34 @@ const CaseDetails = () => {
       alert('Failed to update medications. Please try again.');
     } finally {
       setIsSavingMedications(false);
+    }
+  };
+
+  //Handle submit rating:
+  const handleSubmitRating = async (rating) => {
+    if (!caseData.doctorId?.id) {
+      toast.error('Doctor information not available', 'error');
+      return;
+    }
+
+    setRatingLoading(true);
+    try {
+      await patientService.rateDoctor(caseData.doctorId.id, {
+        caseId: caseData.id,
+        rating: rating
+      });
+
+      toast.success('Rating submitted successfully!', 'success');
+      setShowRatingModal(false);
+      
+      if (typeof loadCaseDetails === 'function') {
+        loadCaseDetails();
+      }
+    } catch (error) {
+      console.error('Error submitting rating:', error);
+      toast.error(error.response?.data?.message || 'Failed to submit rating', 'error');
+    } finally {
+      setRatingLoading(false);
     }
   };
 
@@ -319,9 +359,26 @@ const CaseDetails = () => {
               </p>
             </div>
           </div>
+
+
+          <div className="flex flex-col items-end space-y-2">
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-gray-500">Current Status:</span>
+                <span className="px-3 py-1 bg-primary-100 text-primary-700 rounded-full font-medium">
+                  {caseData.status}
+                </span>
+              </div>
+              <button
+                onClick={() => setShowLifecyclePopup(true)}
+                className="flex items-center space-x-1 text-sm text-primary-600 hover:text-primary-800 transition-colors"
+              >
+                <HelpCircle className="w-4 h-4" />
+                <span>Where am I in the process?</span>
+              </button>
+          </div>
           
           <div className="flex items-center space-x-3">
-            <StatusBadge status={caseData.status} />
+            {/* <StatusBadge status={caseData.status} /> */}
             <PriorityBadge priority={caseData.urgencyLevel} />
           </div>
         </div>
@@ -495,6 +552,7 @@ const CaseDetails = () => {
                       variant="outline" 
                       icon={<Upload className="w-4 h-4" />}
                       fullWidth
+                      disabled={['CLOSED', 'CONSULTATION_COMPLETE'].includes(caseData.status)}
                       onClick={() => setShowAddDocumentsModal(true)}
                     >
                       Add Documents
@@ -516,6 +574,19 @@ const CaseDetails = () => {
                     >
                       View Medical Report
                     </Button>
+
+                    {caseData.status === 'CONSULTATION_COMPLETE' && (//&& caseData.assignedDoctor 
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        className="w-full"
+                        icon={<Star className="w-4 h-4" />}
+                        onClick={() => setShowRatingModal(true)}
+                      >
+                        Rate Doctor
+                      </Button>
+                    )}
+
                   </div>
                 </Card>
               </div>
@@ -989,6 +1060,24 @@ const CaseDetails = () => {
           </div>
         </div>
       </Modal>
+
+      {showRatingModal &&  ( //caseData.assignedDoctor &&
+        <SimpleRatingModal
+          isOpen={showRatingModal}
+          onClose={() => setShowRatingModal(false)}
+          onSubmit={handleSubmitRating}
+          doctorName={caseData.assignedDoctor.name}
+          loading={ratingLoading}
+        />
+      )}
+
+      {/* Lifecycle Popup */}
+      <CaseStatusLifecyclePopup
+        isOpen={showLifecyclePopup}
+        onClose={() => setShowLifecyclePopup(false)}
+        currentStatus={caseData.status}
+      />
+
     </div>
   );
 };
