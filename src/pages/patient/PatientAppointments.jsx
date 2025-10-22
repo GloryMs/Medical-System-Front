@@ -721,7 +721,7 @@ const PatientAppointments = () => {
                             <div className="flex items-center space-x-2">
                               <DollarSign className="w-4 h-4 text-primary-500" />
                               <span className="text-sm font-bold text-primary-600 bg-primary-50 px-2 py-1 rounded">
-                                ${appointment.consultationFee || appointment.doctor?.caseRate || 'N/A'}
+                                {appointment.consultationFee || appointment.doctor?.caseRate || 'N/A'}
                               </span>
                               <FileText className="w-4 h-4 text-primary-500 ml-2" />
                               <span className="text-sm text-gray-600">
@@ -838,7 +838,7 @@ const PatientAppointments = () => {
                               >
                                 Pay & Accept
                               </Button>
-                              <Button
+                              {/* <Button
                                 variant="outline"
                                 size="sm"
                                 icon={<X className="w-4 h-4" />}
@@ -848,7 +848,7 @@ const PatientAppointments = () => {
                                 }}
                               >
                                 Decline
-                              </Button>
+                              </Button> */}
                             </div>
                           )}
 
