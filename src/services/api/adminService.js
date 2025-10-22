@@ -151,6 +151,42 @@ const adminService = {
     });
   },
 
+  //Notifications:
+  getNotifications: async (userId) => {
+    return await api.get(`/admin-service/api/admin/notifications/${userId}`);
+  },
+
+  markNotificationAsRead: async (notificationId, userId) => {
+    return await api.put(
+      `/admin-service/api/admin/notifications/${notificationId}/${userId}/read`
+    );
+  },
+
+  markAllNotificationsAsRead: async (userId) => {
+    return await api.put(
+      `/admin-service/api/admin/notifications/${userId}/read-all`
+    );
+  },
+
+  deleteNotification: async (notificationId) => {
+    return await api.delete(
+      `/admin-service/api/admin/notifications/${notificationId}`
+    );
+  },
+
+  getNotificationSettings: async () => {
+    return await api.get(
+      '/admin-service/api/admin/notifications/settings'
+    );
+  },
+
+  updateNotificationSettings: async (settings) => {
+    return await api.put(
+      '/admin-service/api/admin/notifications/settings',
+      settings
+    );
+  },
+
   // System Configuration
   getSystemConfiguration: async () => {
     return await api.get('/admin-service/api/admin/config/system');

@@ -24,8 +24,14 @@ import {
   Settings2
 } from 'lucide-react';
 
+import { CountBadge } from '../common/Badge';
+import { useNotifications } from '../../hooks/useNotifications';
+
 const Sidebar = ({ open, onClose, userRole, userId }) => {
   const location = useLocation();
+
+  // Use improved hook for notification badge
+  const { unreadCount } = useNotifications(true, 10000);
 
   const getNavigationItems = () => {
     switch (userRole) {
@@ -36,7 +42,7 @@ const Sidebar = ({ open, onClose, userRole, userId }) => {
           { name: 'Family Members', href: '/app/patient/dependents', icon: Users },
           { name: 'Appointments', href: '/app/patient/appointments', icon: Calendar },
           { name: 'Payments', href: '/app/patient/payments', icon: CreditCard },
-          { name: 'Notifications', href: '/app/patient/notifications', icon: Bell },
+          { name: 'Notifications', href: '/app/patient/notifications', icon: Bell, badge: unreadCount },
           { name: 'communication', href: '/app/patient/communication', icon: MessageSquare },
           { name: 'Complaints', href: '/app/patient/complaints', icon: AlertTriangle },
           { name: 'Profile', href: '/app/patient/profile', icon: User },
@@ -51,7 +57,7 @@ const Sidebar = ({ open, onClose, userRole, userId }) => {
           { name: 'Case Management', href: '/app/doctor/cases', icon: FileText },
           { name: 'Appointments', href: '/app/doctor/appointments', icon: Calendar },
           { name: 'Schedule', href: '/app/doctor/schedule', icon: Calendar },
-          { name: 'Notifications', href: '/app/doctor/notifications', icon: Bell },
+          { name: 'Notifications', href: '/app/doctor/notifications', icon: Bell, badge: unreadCount },
           { name: 'Reports', href: '/app/doctor/reports', icon: FileText },
           { name: 'Earnings', href: '/app/doctor/earnings', icon: DollarSign },
           { name: 'Communication', href: '/app/doctor/communication', icon: MessageSquare },
@@ -157,12 +163,31 @@ const Sidebar = ({ open, onClose, userRole, userId }) => {
                       : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                   }`}
                 >
-                  <item.icon
+                  {/* <item.icon
                     className={`mr-3 flex-shrink-0 h-5 w-5 ${
                       isActive ? 'text-primary-500' : 'text-gray-400 group-hover:text-gray-500'
                     }`}
                   />
-                  {item.name}
+                  {item.name} */}
+
+
+                  <div className="flex items-center space-x-3">
+                    <item.icon className={`mr-3 flex-shrink-0 h-5 w-5 ${
+                          isActive ? 'text-primary-500' : 'text-gray-400 group-hover:text-gray-500'
+                        }`} />
+                    <span>{item.name}</span>
+                  </div>
+
+                  {/* Show badge only for notification items with unread count */}
+                  {item.badge && item.badge > 0 && (
+                    <CountBadge 
+                      count={item.badge} 
+                      maxCount={99}
+                      variant="error"
+                      size="sm"
+                    />
+                  )}
+
                 </Link>
               );
             })}
@@ -260,7 +285,18 @@ const Sidebar = ({ open, onClose, userRole, userId }) => {
                           isActive ? 'text-primary-500' : 'text-gray-400'
                         }`}
                       />
-                      {item.name}
+                       {item.name}
+
+                      {/* Show badge only for notification items with unread count */}
+                      {item.badge && item.badge > 0 && (
+                        <CountBadge 
+                          count={item.badge} 
+                          maxCount={99}
+                          variant="error"
+                          size="sm"
+                        />
+                      )}
+
                     </Link>
                   );
                 })}
@@ -274,3 +310,164 @@ const Sidebar = ({ open, onClose, userRole, userId }) => {
 };
 
 export default Sidebar;
+
+// import React from 'react';
+// import { Link, useLocation } from 'react-router-dom';
+// import { 
+//   X, 
+//   Home, 
+//   FileText, 
+//   Calendar, 
+//   CreditCard, 
+//   User, 
+//   Settings, 
+//   Bell,
+//   Users,
+//   UserCheck,
+//   AlertTriangle,
+//   BarChart3,
+//   Database,
+//   Shield,
+//   Stethoscope,
+//   Heart,
+//   DollarSign,
+//   MessageSquare,
+//   Plus,
+//   Settings2
+// } from 'lucide-react';
+// import { CountBadge } from '../common/Badge';
+// import { useNotifications } from '../../hooks/useNotifications';
+
+// const Sidebar = ({ open, onClose, userRole, userId }) => {
+//   const location = useLocation();
+  
+//   // Use improved hook for notification badge
+//   const { unreadCount } = useNotifications(true, 10000);
+
+//   const getNavigationItems = () => {
+//     switch (userRole) {
+//       case 'PATIENT':
+//         return [
+//           { name: 'Dashboard', href: '/app/patient/dashboard', icon: Home },
+//           { name: 'My Cases', href: '/app/patient/cases', icon: FileText },
+//           { name: 'Family Members', href: '/app/patient/dependents', icon: Users },
+//           { name: 'Appointments', href: '/app/patient/appointments', icon: Calendar },
+//           { name: 'Payments', href: '/app/patient/payments', icon: CreditCard },
+//           { name: 'Notifications', href: '/app/patient/notifications', icon: Bell, badge: unreadCount },
+//           { name: 'communication', href: '/app/patient/communication', icon: MessageSquare },
+//           { name: 'Complaints', href: '/app/patient/complaints', icon: AlertTriangle },
+//           { name: 'Profile', href: '/app/patient/profile', icon: User },
+//           { name: 'Subscription', href: '/app/patient/subscription', icon: Plus },
+//           { name: 'Settings', href: '/app/patient/settings', icon: Settings },
+//         ];
+      
+//       case 'DOCTOR':
+//         return [
+//           { name: 'Dashboard', href: '/app/doctor/dashboard', icon: Home },
+//           { name: 'New Assignments', href: '/app/doctor/assignments', icon: Home },
+//           { name: 'Case Management', href: '/app/doctor/cases', icon: FileText },
+//           { name: 'Appointments', href: '/app/doctor/appointments', icon: Calendar },
+//           { name: 'Schedule', href: '/app/doctor/schedule', icon: Calendar },
+//           { name: 'Notifications', href: '/app/doctor/notifications', icon: Bell, badge: unreadCount },
+//           { name: 'Reports', href: '/app/doctor/reports', icon: FileText },
+//           { name: 'Earnings', href: '/app/doctor/earnings', icon: DollarSign },
+//           { name: 'Communication', href: '/app/doctor/communication', icon: MessageSquare },
+//           { name: 'Profile', href: '/app/doctor/profile', icon: User },
+//           { name: 'Settings', href: '/app/doctor/settings', icon: Settings },
+//         ];
+      
+//       case 'ADMIN':
+//         return [
+//           { name: 'Dashboard', href: '/app/admin/dashboard', icon: Home },
+//           { name: 'User Management', href: '/app/admin/users', icon: Users },
+//           { name: 'Doctor Verification', href: '/app/admin/doctors/verification', icon: UserCheck },
+//           { name: 'Case Management', href: '/app/admin/cases', icon: FileText },
+//           { name: 'Payment Management', href: '/app/admin/payments', icon: CreditCard },
+//           { name: 'Complaint Management', href: '/app/admin/complaints', icon: AlertTriangle },
+//           { name: 'System Reports', href: '/app/admin/reports', icon: BarChart3 },
+//           { name: 'Medical Configuration', href: '/app/admin/medical-config', icon: Database },
+//           { name: 'System Configuration', href: '/app/admin/configuration', icon: Settings },
+//           { name: 'Admin Settings', href: '/app/admin/settings', icon: Shield },
+//         ];
+      
+//       default:
+//         return [];
+//     }
+//   };
+
+//   const navigationItems = getNavigationItems();
+
+//   const isActive = (href) => {
+//     return location.pathname === href;
+//   };
+
+//   return (
+//     <>
+//       {/* Mobile overlay */}
+//       {open && (
+//         <div 
+//           className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
+//           onClick={onClose}
+//         />
+//       )}
+
+//       {/* Sidebar */}
+//       <aside
+//         className={`fixed left-0 top-0 z-50 lg:z-30 h-screen w-64 bg-white border-r border-gray-200 overflow-y-auto transition-transform duration-300 transform ${
+//           open ? 'translate-x-0' : '-translate-x-full'
+//         } lg:translate-x-0`}
+//       >
+//         {/* Header with close button */}
+//         <div className="h-16 flex items-center justify-between px-6 border-b border-gray-200">
+//           <h1 className="text-xl font-bold text-primary-600">MediConsult</h1>
+//           <button
+//             onClick={onClose}
+//             className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
+//           >
+//             <X className="w-5 h-5" />
+//           </button>
+//         </div>
+
+//         {/* Navigation */}
+//         <nav className="p-4 space-y-1">
+//           {navigationItems.map((item) => (
+//             <Link
+//               key={item.href}
+//               to={item.href}
+//               onClick={onClose}
+//               className={`flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+//                 isActive(item.href)
+//                   ? 'bg-primary-50 text-primary-600'
+//                   : 'text-gray-700 hover:bg-gray-50'
+//               }`}
+//             >
+//               <div className="flex items-center space-x-3">
+//                 <item.icon className="w-5 h-5" />
+//                 <span>{item.name}</span>
+//               </div>
+              
+//               {/* Show badge only for notification items with unread count */}
+//               {item.badge && item.badge > 0 && (
+//                 <CountBadge 
+//                   count={item.badge} 
+//                   maxCount={99}
+//                   variant="error"
+//                   size="sm"
+//                 />
+//               )}
+//             </Link>
+//           ))}
+//         </nav>
+
+//         {/* Footer info */}
+//         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-gray-50">
+//           <p className="text-xs text-gray-500 text-center">
+//             Medical Consultation System
+//           </p>
+//         </div>
+//       </aside>
+//     </>
+//   );
+// };
+
+// export default Sidebar;

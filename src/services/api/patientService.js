@@ -88,7 +88,12 @@ const patientService = {
     formData.append('maxDoctorsAllowed', caseData.maxDoctorsAllowed || 2);
 
     //Add case dependent if existed
-    formData.append('dependentId', caseData.dependentId || null);
+    const dependentId = caseData?.dependentId;
+    if (dependentId) {
+      formData.append('dependentId', dependentId);
+    }
+    
+    //formData.append('dependentId', caseData.dependentId || null);
     
     // Add files if any
     if (caseData.files && Array.isArray(caseData.files)) {
@@ -618,6 +623,10 @@ const patientService = {
 
   updateNotificationSettings: async (settings) => {
     return await api.put('/patient-service/api/patients/notifications/settings', settings);
+  },
+
+  getNotificationSettings: async () => {
+    return await api.get('/patient-service/api/patients/notifications/settings');
   },
 
   // Communication/Messages

@@ -615,9 +615,15 @@ const doctorService = {
     return await api.put(`/doctor-service/api/doctors/notifications/${userId}/read-all`);
   },
 
-  // updateNotificationSettings: async (settings) => {
-  //   return await api.put('/doctor-service/api/doctors/notifications/settings', settings);
-  // },
+  getNotificationSettings: async () => {
+    return await api.get(
+      '/doctor-service/api/doctors/notifications/settings'
+    );
+  },
+
+  updateNotificationSettings: async (settings) => {
+    return await api.put('/doctor-service/api/doctors/notifications/settings', settings);
+  },
 
   // Analytics
   getAnalytics: async (period = 'month') => {

@@ -1,3 +1,341 @@
+// import React, { useState, useRef, useEffect } from 'react';
+// import { Link } from 'react-router-dom';
+// import { 
+//   Menu, 
+//   Bell, 
+//   Search, 
+//   User, 
+//   Settings, 
+//   LogOut,
+//   ChevronDown,
+//   MessageSquare,
+//   CreditCard,
+//   Shield
+// } from 'lucide-react';
+// import Button from '../common/Button';
+// import Badge, { CountBadge } from '../common/Badge';
+// import { useAuth } from '../../hooks/useAuth';
+// import { useNotifications } from '../../hooks/useNotifications';
+
+// const Header = ({ onMenuClick, user }) => {
+//   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+//   const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false);
+//   const [searchQuery, setSearchQuery] = useState('');
+  
+//   const { logout } = useAuth();
+//   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  
+//   const profileDropdownRef = useRef(null);
+//   const notificationDropdownRef = useRef(null);
+
+//   // Close dropdowns when clicking outside
+//   useEffect(() => {
+//     const handleClickOutside = (event) => {
+//       if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target)) {
+//         setProfileDropdownOpen(false);
+//       }
+//       if (notificationDropdownRef.current && !notificationDropdownRef.current.contains(event.target)) {
+//         setNotificationDropdownOpen(false);
+//       }
+//     };
+
+//     document.addEventListener('mousedown', handleClickOutside);
+//     return () => document.removeEventListener('mousedown', handleClickOutside);
+//   }, []);
+
+//   const getProfileLink = () => {
+//     switch (user?.role) {
+//       case 'PATIENT':
+//         return '/app/patient/profile';
+//       case 'DOCTOR':
+//         return '/app/doctor/profile';
+//       case 'ADMIN':
+//         return '/app/admin/settings';
+//       default:
+//         return '/app/profile';
+//     }
+//   };
+
+//   const getSettingsLink = () => {
+//     switch (user?.role) {
+//       case 'PATIENT':
+//         return '/app/patient/subscription';
+//       case 'DOCTOR':
+//         return '/app/doctor/settings';
+//       case 'ADMIN':
+//         return '/app/admin/configuration';
+//       default:
+//         return '/app/settings';
+//     }
+//   };
+
+//   const handleNotificationClick = (notification) => {
+//     markAsRead(notification.id);
+//     setNotificationDropdownOpen(false);
+//     // Navigate to relevant page based on notification type
+//     // This would be implemented based on your routing logic
+//   };
+
+//   const formatTimeAgo = (date) => {
+//     const now = new Date();
+//     const notificationDate = new Date(date);
+//     const diffInMinutes = Math.floor((now - notificationDate) / (1000 * 60));
+    
+//     if (diffInMinutes < 1) return 'Just now';
+//     if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+//     if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
+//     return `${Math.floor(diffInMinutes / 1440)}d ago`;
+//   };
+
+//   return (
+//     <header className="bg-white shadow-sm border-b border-gray-200">
+//       <div className="flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8">
+//         {/* Left side */}
+//         <div className="flex items-center space-x-4">
+//           {/* Mobile menu button */}
+//           <Button
+//             variant="ghost"
+//             size="sm"
+//             onClick={onMenuClick}
+//             className="lg:hidden"
+//             icon={<Menu className="w-5 h-5" />}
+//           />
+
+//           {/* Search bar */}
+//           <div className="hidden md:block">
+//             <div className="relative">
+//               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+//               <input
+//                 type="text"
+//                 placeholder="Search cases, patients, doctors..."
+//                 value={searchQuery}
+//                 onChange={(e) => setSearchQuery(e.target.value)}
+//                 className="pl-10 pr-4 py-2 w-64 lg:w-80 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+//               />
+//             </div>
+//           </div>
+//         </div>
+
+//         {/* Right side */}
+//         <div className="flex items-center space-x-4">
+//           {/* Quick Actions based on role */}
+//           {user?.role === 'PATIENT' && (
+//             <Link to="/app/patient/cases">
+//               <Button variant="outline" size="sm">
+//                 New Case
+//               </Button>
+//             </Link>
+//           )}
+          
+//           {user?.role === 'DOCTOR' && (
+//             <Link to="/app/doctor/cases">
+//               <Button variant="outline" size="sm">
+//                 View Cases
+//               </Button>
+//             </Link>
+//           )}
+
+//           {/* Notifications */}
+//           <div className="relative" ref={notificationDropdownRef}>
+//             <Button
+//               variant="ghost"
+//               size="sm"
+//               onClick={() => setNotificationDropdownOpen(!notificationDropdownOpen)}
+//               className="relative"
+//               icon={<Bell className="w-5 h-5" />}
+//             />
+//             {unreadCount > 0 && (
+//               <div className="absolute -top-1 -right-1">
+//                 <CountBadge count={unreadCount} variant="error" size="xs" />
+//               </div>
+//             )}
+
+//             {/* Notifications dropdown */}
+//             {notificationDropdownOpen && (
+//               <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+//                 <div className="p-4 border-b border-gray-200">
+//                   <div className="flex items-center justify-between">
+//                     <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
+//                     {unreadCount > 0 && (
+//                       <Button
+//                         variant="ghost"
+//                         size="sm"
+//                         onClick={markAllAsRead}
+//                       >
+//                         Mark all read
+//                       </Button>
+//                     )}
+//                   </div>
+//                 </div>
+                
+//                 <div className="max-h-96 overflow-y-auto">
+//                   {notifications.slice(0, 5).map((notification) => (
+//                     <div
+//                       key={notification.id}
+//                       className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${
+//                         !notification.isRead ? 'bg-blue-50' : ''
+//                       }`}
+//                       onClick={() => handleNotificationClick(notification)}
+//                     >
+//                       <div className="flex items-start space-x-3">
+//                         <div className={`flex-shrink-0 w-2 h-2 rounded-full mt-2 ${
+//                           !notification.isRead ? 'bg-primary-500' : 'bg-gray-300'
+//                         }`} />
+//                         <div className="flex-1 min-w-0">
+//                           <p className="text-sm font-medium text-gray-900">
+//                             {notification.title}
+//                           </p>
+//                           <p className="text-sm text-gray-600 mt-1">
+//                             {notification.message}
+//                           </p>
+//                           <p className="text-xs text-gray-500 mt-1">
+//                             {formatTimeAgo(notification.createdAt)}
+//                           </p>
+//                         </div>
+//                       </div>
+//                     </div>
+//                   ))}
+//                 </div>
+                
+//                 <div className="p-4 border-t border-gray-200">
+//                   <Link
+//                     to={`/app/${user?.role?.toLowerCase()}/notifications`}
+//                     className="block text-center text-sm text-primary-600 hover:text-primary-500"
+//                     onClick={() => setNotificationDropdownOpen(false)}
+//                   >
+//                     View all notifications
+//                   </Link>
+//                 </div>
+//               </div>
+//             )}
+//           </div>
+
+//           {/* User profile dropdown */}
+//           <div className="relative" ref={profileDropdownRef}>
+//             <Button
+//               variant="ghost"
+//               onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+//               className="flex items-center space-x-2 text-sm"
+//             >
+//               <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
+//                 <User className="w-4 h-4 text-primary-600" />
+//               </div>
+//               <div className="hidden md:block text-left">
+//                 <p className="text-sm font-medium text-gray-900">
+//                   {user?.firstName} {user?.lastName}
+//                 </p>
+//                 <p className="text-xs text-gray-500">
+//                   <Badge variant="outline" size="xs">
+//                     {user?.role}
+//                   </Badge>
+//                 </p>
+//               </div>
+//               <ChevronDown className="w-4 h-4 text-gray-500" />
+//             </Button>
+
+//             {/* Profile dropdown menu */}
+//             {profileDropdownOpen && (
+//               <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+//                 <div className="p-4 border-b border-gray-200">
+//                   <div className="flex items-center space-x-3">
+//                     <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
+//                       <User className="w-5 h-5 text-primary-600" />
+//                     </div>
+//                     <div>
+//                       <p className="text-sm font-medium text-gray-900">
+//                         {user?.firstName} {user?.lastName}
+//                       </p>
+//                       <p className="text-sm text-gray-500">{user?.email}</p>
+//                     </div>
+//                   </div>
+//                 </div>
+
+//                 <div className="py-2">
+//                   <Link
+//                     to={getProfileLink()}
+//                     className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+//                     onClick={() => setProfileDropdownOpen(false)}
+//                   >
+//                     <User className="w-4 h-4 mr-3" />
+//                     Profile
+//                   </Link>
+
+//                   <Link
+//                     to={getSettingsLink()}
+//                     className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+//                     onClick={() => setProfileDropdownOpen(false)}
+//                   >
+//                     <Settings className="w-4 h-4 mr-3" />
+//                     Settings
+//                   </Link>
+
+//                   {user?.role === 'PATIENT' && (
+//                     <Link
+//                       to="/app/patient/payments"
+//                       className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+//                       onClick={() => setProfileDropdownOpen(false)}
+//                     >
+//                       <CreditCard className="w-4 h-4 mr-3" />
+//                       Billing
+//                     </Link>
+//                   )}
+
+//                   {user?.role === 'DOCTOR' && (
+//                     <Link
+//                       to="/app/doctor/earnings"
+//                       className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+//                       onClick={() => setProfileDropdownOpen(false)}
+//                     >
+//                       <CreditCard className="w-4 h-4 mr-3" />
+//                       Earnings
+//                     </Link>
+//                   )}
+
+//                   <Link
+//                     to={`/app/${user?.role?.toLowerCase()}/communication`}
+//                     className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+//                     onClick={() => setProfileDropdownOpen(false)}
+//                   >
+//                     <MessageSquare className="w-4 h-4 mr-3" />
+//                     Messages
+//                   </Link>
+
+//                   {user?.role === 'ADMIN' && (
+//                     <Link
+//                       to="/app/admin/configuration"
+//                       className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+//                       onClick={() => setProfileDropdownOpen(false)}
+//                     >
+//                       <Shield className="w-4 h-4 mr-3" />
+//                       Administration
+//                     </Link>
+//                   )}
+//                 </div>
+
+//                 <div className="border-t border-gray-200 py-2">
+//                   <button
+//                     onClick={() => {
+//                       setProfileDropdownOpen(false);
+//                       logout();
+//                     }}
+//                     className="flex items-center w-full px-4 py-2 text-sm text-red-700 hover:bg-red-50"
+//                   >
+//                     <LogOut className="w-4 h-4 mr-3" />
+//                     Sign out
+//                   </button>
+//                 </div>
+//               </div>
+//             )}
+//           </div>
+//         </div>
+//       </div>
+//     </header>
+//   );
+// };
+
+// export default Header;
+
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -23,7 +361,16 @@ const Header = ({ onMenuClick, user }) => {
   const [searchQuery, setSearchQuery] = useState('');
   
   const { logout } = useAuth();
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  
+  // Use improved hook with auto-refresh enabled (10 second interval)
+  const { 
+    notifications, 
+    unreadCount, 
+    newNotificationsCount,
+    markAsRead, 
+    markAllAsRead,
+    resetNewNotificationsCounter 
+  } = useNotifications(true, 10000);
   
   const profileDropdownRef = useRef(null);
   const notificationDropdownRef = useRef(null);
@@ -69,11 +416,15 @@ const Header = ({ onMenuClick, user }) => {
     }
   };
 
+  const handleNotificationDropdownOpen = () => {
+    setNotificationDropdownOpen(!notificationDropdownOpen);
+    // Reset counter when opening dropdown
+    resetNewNotificationsCounter();
+  };
+
   const handleNotificationClick = (notification) => {
     markAsRead(notification.id);
     setNotificationDropdownOpen(false);
-    // Navigate to relevant page based on notification type
-    // This would be implemented based on your routing logic
   };
 
   const formatTimeAgo = (date) => {
@@ -87,6 +438,9 @@ const Header = ({ onMenuClick, user }) => {
     return `${Math.floor(diffInMinutes / 1440)}d ago`;
   };
 
+  // Get recent notifications for dropdown (max 5)
+  const recentNotifications = notifications.slice(0, 5);
+
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
       <div className="flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8">
@@ -95,22 +449,22 @@ const Header = ({ onMenuClick, user }) => {
           {/* Mobile menu button */}
           <Button
             variant="ghost"
-            size="sm"
             onClick={onMenuClick}
             className="lg:hidden"
-            icon={<Menu className="w-5 h-5" />}
-          />
+          >
+            <Menu className="w-5 h-5" />
+          </Button>
 
-          {/* Search bar */}
-          <div className="hidden md:block">
+          {/* Search */}
+          <div className="hidden md:block flex-1 max-w-xs">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search cases, patients, doctors..."
+                placeholder="Search..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2 w-64 lg:w-80 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
           </div>
@@ -118,89 +472,101 @@ const Header = ({ onMenuClick, user }) => {
 
         {/* Right side */}
         <div className="flex items-center space-x-4">
-          {/* Quick Actions based on role */}
-          {user?.role === 'PATIENT' && (
-            <Link to="/app/patient/cases">
-              <Button variant="outline" size="sm">
-                New Case
-              </Button>
-            </Link>
-          )}
-          
-          {user?.role === 'DOCTOR' && (
-            <Link to="/app/doctor/cases">
-              <Button variant="outline" size="sm">
-                View Cases
-              </Button>
-            </Link>
-          )}
-
-          {/* Notifications */}
+          {/* Notification bell with badge */}
           <div className="relative" ref={notificationDropdownRef}>
             <Button
               variant="ghost"
-              size="sm"
-              onClick={() => setNotificationDropdownOpen(!notificationDropdownOpen)}
+              onClick={handleNotificationDropdownOpen}
               className="relative"
-              icon={<Bell className="w-5 h-5" />}
-            />
-            {unreadCount > 0 && (
-              <div className="absolute -top-1 -right-1">
-                <CountBadge count={unreadCount} variant="error" size="xs" />
-              </div>
-            )}
+            >
+              <Bell className="w-5 h-5"  />
+              {/* Badge showing unread count */}
+              {unreadCount > 0 && (
+                <CountBadge 
+                  count={unreadCount} 
+                  maxCount={99}
+                  variant="error"
+                  size="sm"
+                  className="absolute -top-1 -right-1"
+                />
+              )}
+              {/* Indicator for new notifications */}
+              {newNotificationsCount > 0 && (
+                <span className="absolute top-0 right-0 flex h-2 w-2 items-center justify-center">
+                  <span className="animate-pulse absolute inline-flex h-2 w-2 rounded-full bg-red-400"></span>
+                </span>
+              )}
+            </Button>
 
-            {/* Notifications dropdown */}
+            {/* Notification dropdown */}
             {notificationDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                <div className="p-4 border-b border-gray-200">
+              <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-96 overflow-hidden flex flex-col">
+                {/* Header */}
+                <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
+                    <h3 className="text-sm font-semibold text-gray-900">
+                      Notifications
+                      {newNotificationsCount > 0 && (
+                        <span className="ml-2 inline-block bg-red-100 text-red-800 text-xs font-bold px-2 py-1 rounded-full">
+                          {newNotificationsCount} new
+                        </span>
+                      )}
+                    </h3>
                     {unreadCount > 0 && (
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={markAllAsRead}
+                        className="text-xs text-primary-600 hover:text-primary-500"
                       >
-                        Mark all read
+                        Mark all as read
                       </Button>
                     )}
                   </div>
                 </div>
-                
-                <div className="max-h-96 overflow-y-auto">
-                  {notifications.slice(0, 5).map((notification) => (
-                    <div
-                      key={notification.id}
-                      className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${
-                        !notification.isRead ? 'bg-blue-50' : ''
-                      }`}
-                      onClick={() => handleNotificationClick(notification)}
-                    >
-                      <div className="flex items-start space-x-3">
-                        <div className={`flex-shrink-0 w-2 h-2 rounded-full mt-2 ${
-                          !notification.isRead ? 'bg-primary-500' : 'bg-gray-300'
-                        }`} />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900">
-                            {notification.title}
-                          </p>
-                          <p className="text-sm text-gray-600 mt-1">
-                            {notification.message}
-                          </p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            {formatTimeAgo(notification.createdAt)}
-                          </p>
+
+                {/* Notifications list */}
+                <div className="overflow-y-auto flex-1">
+                  {recentNotifications.length > 0 ? (
+                    recentNotifications.map((notification) => (
+                      <div
+                        key={notification.id}
+                        className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition ${
+                          !notification.isRead ? 'bg-blue-50' : ''
+                        }`}
+                        onClick={() => handleNotificationClick(notification)}
+                      >
+                        <div className="flex items-start space-x-3">
+                          <div className={`flex-shrink-0 w-2 h-2 rounded-full mt-2 ${
+                            !notification.isRead ? 'bg-primary-500' : 'bg-gray-300'
+                          }`} />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900">
+                              {notification.title}
+                            </p>
+                            <p className="text-sm text-gray-600 mt-1 truncate">
+                              {notification.message}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {formatTimeAgo(notification.createdAt)}
+                            </p>
+                          </div>
                         </div>
                       </div>
+                    ))
+                  ) : (
+                    <div className="p-8 text-center">
+                      <Bell className="w-8 h-8 text-gray-400 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm text-gray-500">No notifications</p>
                     </div>
-                  ))}
+                  )}
                 </div>
                 
-                <div className="p-4 border-t border-gray-200">
+                {/* Footer */}
+                <div className="p-4 border-t border-gray-200 bg-gray-50">
                   <Link
                     to={`/app/${user?.role?.toLowerCase()}/notifications`}
-                    className="block text-center text-sm text-primary-600 hover:text-primary-500"
+                    className="block text-center text-sm text-primary-600 hover:text-primary-500 font-medium"
                     onClick={() => setNotificationDropdownOpen(false)}
                   >
                     View all notifications
@@ -217,24 +583,15 @@ const Header = ({ onMenuClick, user }) => {
               onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
               className="flex items-center space-x-2 text-sm"
             >
-              <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
-                <User className="w-4 h-4 text-primary-600" />
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white">
+                {user?.fullName?.charAt(0)?.toUpperCase()}
               </div>
-              <div className="hidden md:block text-left">
-                <p className="text-sm font-medium text-gray-900">
-                  {user?.firstName} {user?.lastName}
-                </p>
-                <p className="text-xs text-gray-500">
-                  <Badge variant="outline" size="xs">
-                    {user?.role}
-                  </Badge>
-                </p>
-              </div>
-              <ChevronDown className="w-4 h-4 text-gray-500" />
+              <span className="hidden sm:block">{user?.fullName}</span>
+              <ChevronDown className="w-4 h-4 text-gray-400" />
             </Button>
 
             {/* Profile dropdown menu */}
-            {profileDropdownOpen && (
+             {profileDropdownOpen && (
               <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
                 <div className="p-4 border-b border-gray-200">
                   <div className="flex items-center space-x-3">
@@ -243,7 +600,7 @@ const Header = ({ onMenuClick, user }) => {
                     </div>
                     <div>
                       <p className="text-sm font-medium text-gray-900">
-                        {user?.firstName} {user?.lastName}
+                        {user?.fullName}
                       </p>
                       <p className="text-sm text-gray-500">{user?.email}</p>
                     </div>
