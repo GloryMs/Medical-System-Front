@@ -138,8 +138,24 @@ const doctorService = {
   },
 
 
+  // rescheduleAppointment: async (appointmentId, rescheduleData) => {
+  //   return await api.put(`/doctor-service/api/doctors/appointments/${appointmentId}/reschedule`, rescheduleData);
+  // },
+
   rescheduleAppointment: async (appointmentId, rescheduleData) => {
     return await api.put(`/doctor-service/api/doctors/appointments/${appointmentId}/reschedule`, rescheduleData);
+  },
+
+  approveRescheduleRequest: async (requestId, approveData) => {
+    return await api.post(`/doctor-service/api/doctors/reschedule-requests/${requestId}/approve`, approveData);
+  },
+
+  proposeRescheduleTime: async (appointmentId, proposeData) => {
+    return await api.post(`/doctor-service/api/doctors/appointments/${appointmentId}/propose-reschedule`, proposeData);
+  },
+
+  rejectRescheduleRequest: async (requestId, rejectData) => {
+    return await api.post(`/doctor-service/api/doctors/reschedule-requests/${requestId}/reject`, rejectData);
   },
 
 

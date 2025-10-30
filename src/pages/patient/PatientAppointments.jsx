@@ -37,7 +37,8 @@ import {
   Calendar as CalendarIcon,
   Eye,
   List,
-  Grid
+  Grid,
+  Plus
 } from 'lucide-react';
 
 import Card, { StatsCard, AlertCard } from '../../components/common/Card';
@@ -79,21 +80,37 @@ const PatientAppointments = () => {
   // NEW: View mode state
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'calendar'
   const [currentDate, setCurrentDate] = useState(new Date());
-  
+
+  //New for Rescheduling
+  const [preferredDates, setPreferredDates] = useState(['']);
+  const [pendingRescheduleRequests, setPendingRescheduleRequests] = useState([]);
+  const [showPendingRequestsModal, setShowPendingRequestsModal] = useState(false);
+
+
   // Form setup
-  const rescheduleForm = useForm({
+  // const rescheduleForm = useForm({
+  //   resolver: yupResolver(rescheduleSchema),
+  //   defaultValues: {
+  //     reason: '',
+  //     preferredDates: [],
+  //     additionalNotes: ''
+  //   }
+  // });
+
+ const rescheduleForm = useForm({
     resolver: yupResolver(rescheduleSchema),
     defaultValues: {
       reason: '',
-      preferredDates: [],
+      preferredDates: [''],
       additionalNotes: ''
     }
-  });
+  }); 
 
   // Load data on component mount
   useEffect(() => {
     loadAppointments();
     loadPaymentMethods();
+    loadPendingRescheduleRequests();
   }, []);
 
   // Filter appointments when search term or filters change
@@ -124,6 +141,16 @@ const PatientAppointments = () => {
       setPaymentMethods(methods || []);
     } catch (error) {
       console.error('Failed to load payment methods:', error);
+    }
+  };
+
+  // NEW: Load pending reschedule requests
+  const loadPendingRescheduleRequests = async () => {
+    try {
+      const data = await execute(() => patientService.getPendingRescheduleRequests());
+      setPendingRescheduleRequests(data || []);
+    } catch (error) {
+      console.error('Failed to load reschedule requests:', error);
     }
   };
 
@@ -193,6 +220,8 @@ const PatientAppointments = () => {
       day: 'numeric'
     });
   };
+
+
 
   const formatTime = (dateString) => {
     return new Date(dateString).toLocaleTimeString('en-US', {
@@ -281,6 +310,64 @@ const PatientAppointments = () => {
 
   // Event handlers
 
+    // NEW: Handle reschedule request submission
+  const handleRescheduleRequest = async (data) => {
+    try {
+      const rescheduleData = {
+        reason: data.reason,
+        preferredTimes: data.preferredDates.filter(date => date !== ''), // Use form data
+        additionalNotes: data.additionalNotes || '',
+        appointmentId: selectedAppointment.id,
+      };
+
+      await execute(() => 
+        patientService.requestReschedule(selectedAppointment.caseId, rescheduleData)
+      );
+      
+      await loadAppointments();
+      await loadPendingRescheduleRequests();
+      setShowRescheduleModal(false);
+      setSelectedAppointment(null);
+      rescheduleForm.reset();
+    } catch (error) {
+      console.error('Failed to request reschedule:', error);
+    }
+  };
+
+  const handleUpdateRescheduleRequest = async (requestId, status) => {
+    try {
+      await execute(() => 
+        patientService.updateRescheduleRequest(requestId, status)
+      );
+      await loadPendingRescheduleRequests();
+      await loadAppointments();
+    } catch (error) {
+      console.error('Failed to update reschedule request:', error);
+    }
+  };
+
+  // NEW: Add/Remove preferred date fields
+  const addPreferredDate = () => {
+    setPreferredDates([...preferredDates, '']);
+  };
+
+  const removePreferredDate = (index) => {
+    setPreferredDates(preferredDates.filter((_, i) => i !== index));
+  };
+
+  const updatePreferredDate = (index, value) => {
+    const newDates = [...preferredDates];
+    newDates[index] = value;
+    setPreferredDates(newDates);
+  };
+
+  // Check if appointment has pending reschedule request
+  const hasPendingRescheduleRequests = (appointmentId) => {
+    console.log( 'Called for appointment: ' +  appointmentId);
+    console.log( 'Result: ' +  pendingRescheduleRequests.some(req => req.appointmentId === appointmentId));
+
+    return pendingRescheduleRequests.some(req => req.appointmentId === appointmentId);
+  };
 
   const handleAcceptAppointment = async (appointment) => {
     // Instead of directly accepting, show payment modal first
@@ -288,17 +375,17 @@ const PatientAppointments = () => {
     setShowPaymentModal(true);
   };
 
-  const handleReschedule = async (data) => {
-    try {
-      await execute(() => patientService.rescheduleAppointment(selectedAppointment.id, data));
-      await loadAppointments();
-      setShowRescheduleModal(false);
-      setSelectedAppointment(null);
-      rescheduleForm.reset();
-    } catch (error) {
-      console.error('Failed to reschedule appointment:', error);
-    }
-  };
+  // const handleReschedule = async (data) => {
+  //   try {
+  //     await execute(() => patientService.rescheduleAppointment(selectedAppointment.id, data));
+  //     await loadAppointments();
+  //     setShowRescheduleModal(false);
+  //     setSelectedAppointment(null);
+  //     rescheduleForm.reset();
+  //   } catch (error) {
+  //     console.error('Failed to reschedule appointment:', error);
+  //   }
+  // };
 
   const handleDeclineAppointment = async () => {
     try {
@@ -457,7 +544,7 @@ const PatientAppointments = () => {
                 .map(appointment => (
                   <div
                     key={appointment.id}
-                    onClick={() => navigate(`/app/patient/appointments/${appointment.id}`)}
+                    //onClick={() => navigate(`/app/patient/appointments/${appointment.id}`)}
                     className="flex items-center justify-between p-2 bg-gray-50 rounded cursor-pointer hover:bg-gray-100 transition-colors"
                   >
                     <div className="flex items-center space-x-2">
@@ -469,6 +556,15 @@ const PatientAppointments = () => {
                         <p className="text-xs text-gray-500">{formatDateTime(appointment.scheduledTime)}</p>
                       </div>
                     </div>
+                                    {/* NEW: Reschedule request badge */}
+                                    {appointment.status?.toUpperCase() === 'SCHEDULED'  &&
+                                        hasPendingRescheduleRequests(appointment.id) && (
+                                      <Badge variant="purple" size="sm" className="bg-purple-100 text-purple-800">
+                                        <Bell className="w-3 h-3 mr-1" />
+                                        Reschedule Request
+                                      </Badge>
+                                    )}
+
                     <StatusBadge status={appointment.status} size="xs" />
                   </div>
                 ))}
@@ -589,6 +685,25 @@ const PatientAppointments = () => {
                 />
               </div>
 
+              {/* NEW: Badge for pending reschedule requests (FIX for issue #3) */}
+              {pendingRescheduleRequests.length > 0 && (
+                <Button
+                  variant="outline"
+                  className="relative"
+                  onClick={() => setShowPendingRequestsModal(true)}
+                >
+                  <Bell className="w-5 h-5 mr-2" />
+                  Reschedule Requests
+                  <Badge 
+                    variant="danger" 
+                    size="sm" 
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full px-2 py-0.5 text-xs"
+                  >
+                    {pendingRescheduleRequests.length}
+                  </Badge>
+                </Button>
+              )}
+
               {/* Filters and View Toggle */}
               <div className="flex flex-wrap items-center space-x-4">
                 <div className="flex items-center space-x-2">
@@ -695,7 +810,18 @@ const PatientAppointments = () => {
                                 <h3 className="text-lg font-semibold text-gray-900">
                                   Doctor: {appointment.doctor?.fullName}
                                 </h3>
+                                
                                 <StatusBadge status={appointment.status} />
+
+                                    {/* NEW: Reschedule request badge */}
+                                    {appointment.status?.toUpperCase() === 'SCHEDULED'  &&
+                                        hasPendingRescheduleRequests(appointment.id) && (
+                                      <Badge variant="purple" size="sm" className="bg-purple-100 text-purple-800">
+                                        <Bell className="w-3 h-3 mr-1" />
+                                        Reschedule Request
+                                      </Badge>
+                                    )}
+
                               </div>
                               <div className="flex items-center space-x-4 text-sm text-gray-600">
                                 <span className="flex items-center space-x-1">
@@ -828,7 +954,8 @@ const PatientAppointments = () => {
                           )}
 
                           {/* Status-specific Actions */}
-                          {appointment.status?.toLowerCase() === 'scheduled' && (
+                          {(appointment.status?.toLowerCase() === 'scheduled' || 
+                            appointment.status?.toLowerCase() === 'rescheduled') && (
                             <div className="flex space-x-2">
                               <Button
                                 variant="primary"
@@ -868,7 +995,8 @@ const PatientAppointments = () => {
 
                           {/* Common Actions */}
                           <div className="flex space-x-2">
-                            {['scheduled'].includes(appointment.status?.toLowerCase()) && (
+                            {['scheduled'].includes(appointment.status?.toLowerCase()) &&
+                              !hasPendingRescheduleRequests(appointment.id) && (
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -940,50 +1068,185 @@ const PatientAppointments = () => {
       </div>
 
       {/* Modals */}
-      {showRescheduleModal && (
-        <FormModal
-          title="Reschedule Appointment"
-          isOpen={showRescheduleModal}
-          onClose={() => {
-            setShowRescheduleModal(false);
-            setSelectedAppointment(null);
-            rescheduleForm.reset();
-          }}
-          onSubmit={rescheduleForm.handleSubmit(handleReschedule)}
-          loading={loading}
-        >
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Reason for Rescheduling *
-              </label>
-              <textarea
-                {...rescheduleForm.register('reason')}
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                placeholder="Please explain why you need to reschedule..."
-              />
-              {rescheduleForm.formState.errors.reason && (
-                <p className="text-sm text-red-600 mt-1">
-                  {rescheduleForm.formState.errors.reason.message}
+
+      {/* NEW: Reschedule Request Modal with Multiple Date Options */}
+      <FormModal
+        isOpen={showRescheduleModal}
+        onClose={() => {
+          setShowRescheduleModal(false);
+          setSelectedAppointment(null);
+          setPreferredDates(['']);
+          rescheduleForm.reset();
+        }}
+        title="Request Appointment Reschedule"
+        onSubmit={rescheduleForm.handleSubmit(handleRescheduleRequest)}
+        loading={loading}
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Reason for Rescheduling *
+            </label>
+            <textarea
+              {...rescheduleForm.register('reason')}
+              rows="3"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              placeholder="Please provide a reason for rescheduling..."
+            />
+            {rescheduleForm.formState.errors.reason && (
+              <p className="text-red-500 text-sm mt-1">
+                {rescheduleForm.formState.errors.reason.message}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Preferred Date/Time Options *
+            </label>
+            <div className="space-y-2">
+              {rescheduleForm.watch('preferredDates')?.map((_, index) => (
+                <div key={index} className="flex gap-2">
+                  <input
+                    type="datetime-local"
+                    {...rescheduleForm.register(`preferredDates.${index}`, { 
+                      required: index === 0 ? 'At least one date is required' : false 
+                    })}
+                    min={new Date().toISOString().slice(0, 16)}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                  {rescheduleForm.watch('preferredDates')?.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="danger"
+                      size="sm"
+                      onClick={() => {
+                        const current = rescheduleForm.getValues('preferredDates') || [];
+                        rescheduleForm.setValue('preferredDates', current.filter((_, i) => i !== index));
+                      }}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+              {rescheduleForm.formState.errors.preferredDates && (
+                <p className="text-red-500 text-sm mt-1">
+                  {rescheduleForm.formState.errors.preferredDates.message}
                 </p>
               )}
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Additional Notes
-              </label>
-              <textarea
-                {...rescheduleForm.register('additionalNotes')}
-                rows={2}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                placeholder="Any additional information..."
-              />
-            </div>
+            {(rescheduleForm.watch('preferredDates') || []).length < 5 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const current = rescheduleForm.getValues('preferredDates') || [];
+                  rescheduleForm.setValue('preferredDates', [...current, '']);
+                }}
+                className="mt-2"
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Add Another Time Option
+              </Button>
+            )}
           </div>
-        </FormModal>
-      )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Additional Notes (Optional)
+            </label>
+            <textarea
+              {...rescheduleForm.register('additionalNotes')}
+              rows="2"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              placeholder="Any additional information..."
+            />
+          </div>
+        </div>
+      </FormModal>
+
+      {/* Updated: Pending Reschedule Requests Modal */}
+      <Modal
+        isOpen={showPendingRequestsModal}
+        onClose={() => setShowPendingRequestsModal(false)}
+        title="Pending Reschedule Requests"
+        size="lg"
+      >
+        <div className="space-y-4">
+          {pendingRescheduleRequests.length === 0 ? (
+            <p className="text-gray-500 text-center py-4">No pending reschedule requests</p>
+          ) : (
+            pendingRescheduleRequests
+              .filter(request => request.status === 'PENDING')
+              .map(request => {
+                // Parse preferred times from the comma-separated string
+                const preferredTimesArray = request.preferredTimes 
+                  ? request.preferredTimes.split(',').map(time => time.trim())
+                  : [];
+
+                return (
+                  <Card key={request.id}>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-semibold">
+                          Reschedule Request for Appointment #{request.appointmentId}
+                        </h4>
+                        <StatusBadge 
+                          status={request.status} 
+                          className="bg-yellow-100 text-yellow-800"
+                        />
+                      </div>
+                      
+                      <div className="text-sm space-y-1 text-gray-600">
+                        <p>
+                          <span className="font-medium text-gray-700">Case ID:</span> {request.caseId}
+                        </p>
+                        <p>
+                          <span className="font-medium text-gray-700">Requested By:</span> {request.requestedBy}
+                        </p>
+                        <p>
+                          <span className="font-medium text-gray-700">Request Date:</span>{' '}
+                          {formatDateTime(request.createdAt)}
+                        </p>
+                        {request.reason && (
+                          <p>
+                            <span className="font-medium text-gray-700">Reason:</span> {request.reason}
+                          </p>
+                        )}
+                      </div>
+
+                      {preferredTimesArray.length > 0 && (
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                          <p className="font-medium text-blue-900 mb-2">Your Preferred Times:</p>
+                          <ul className="space-y-1">
+                            {preferredTimesArray.map((time, index) => (
+                              <li key={index} className="text-blue-700 text-sm">
+                                • {formatDateTime(time)}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                        <p className="text-gray-600 text-sm">
+                          <span className="font-medium text-gray-700">Status:</span> Awaiting doctor's response
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })
+          )}
+          
+          {pendingRescheduleRequests.length > 0 && 
+          pendingRescheduleRequests.filter(request => request.status === 'PENDING').length === 0 && (
+            <p className="text-gray-500 text-center py-4">No pending reschedule requests</p>
+          )}
+        </div>
+      </Modal>
 
       {showDeclineModal && (
         <ConfirmModal

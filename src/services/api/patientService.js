@@ -507,8 +507,24 @@ const patientService = {
     return await api.post(`/patient-service/api/patients/appointments/${appointmentId}/decline`, { reason });
   },
 
+  // requestReschedule: async (caseId, rescheduleData) => {
+  //   return await api.post(`/patient-service/api/patients/cases/${caseId}/reschedule-request`, rescheduleData);
+  // },
+
   requestReschedule: async (caseId, rescheduleData) => {
     return await api.post(`/patient-service/api/patients/cases/${caseId}/reschedule-request`, rescheduleData);
+  },
+
+  getRescheduleRequests: async (caseId) => {
+    return await api.get(`/patient-service/api/patients/cases/${caseId}/reschedule-requests`);
+  },
+
+  getPendingRescheduleRequests: async () => {
+    return await api.get('/patient-service/api/patients/reschedule-requests/pending');
+  },
+
+  updateRescheduleRequest: async (requestId, status) => {
+    return await api.put(`/patient-service/api/patients/reschedule-request/${requestId}/update?status=${status}`);
   },
 
   // Subscription Management

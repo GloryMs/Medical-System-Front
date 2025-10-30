@@ -13,6 +13,7 @@ import {
   Search,
   Filter,
   X,
+  Bell,
   Eye,
   Edit,
   XCircle,
@@ -34,6 +35,8 @@ import Modal, { FormModal } from '../../components/common/Modal';
 import { useAuth } from '../../hooks/useAuth';
 import { useApi } from '../../hooks/useApi';
 import doctorService from '../../services/api/doctorService';
+import patientService from '../../services/api/patientService';
+
 
 // Utility functions
 const formatDateTime = (dateString) => {
@@ -77,6 +80,11 @@ const cancelSchema = yup.object({
   reason: yup.string().required('Cancellation reason is required').min(10, 'Please provide detailed reason')
 });
 
+const proposeRescheduleSchema = yup.object({
+  proposedTime: yup.date().required('Proposed date/time is required').min(new Date(), 'Date must be in the future'),
+  reason: yup.string().required('Reason is required')
+});
+
 // Constants
 const CONSULTATION_TYPE = {
   VIDEO_CONSULTATION: 'Video Call',
@@ -102,8 +110,13 @@ const DoctorAppointments = () => {
   const [viewMode, setViewMode] = useState(VIEW_MODES.LIST);
   const [currentDate, setCurrentDate] = useState(new Date());
 
+  // NEW: Reschedule request states
+  const [rescheduleRequests, setRescheduleRequests] = useState([]);
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [showRescheduleRequestModal, setShowRescheduleRequestModal] = useState(false);
+  const [showProposeNewTimeModal, setShowProposeNewTimeModal] = useState(false);  
+
   // Modal states
-  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showCompleteConfirmModal, setShowCompleteConfirmModal] = useState(false);
@@ -129,6 +142,10 @@ const DoctorAppointments = () => {
     resolver: yupResolver(rescheduleSchema)
   });
 
+  const proposeRescheduleForm = useForm({
+    resolver: yupResolver(proposeRescheduleSchema)
+  });
+
   const cancelForm = useForm({
     resolver: yupResolver(cancelSchema)
   });
@@ -137,6 +154,13 @@ const DoctorAppointments = () => {
   useEffect(() => {
     loadAppointments();
   }, []);
+
+  // Load reschedule requests AFTER appointments are loaded (FIX for issue #2)
+  useEffect(() => {
+    if (appointments.length > 0) {
+      loadRescheduleRequests();
+    }
+  }, [appointments]);
 
   // Filter appointments when search/filter changes
   useEffect(() => {
@@ -151,6 +175,7 @@ const DoctorAppointments = () => {
   const loadAppointments = async () => {
     try {
       const data = await execute(() => doctorService.getAppointments());
+      console.log('appointment size: ' + data.length);
       setAppointments(data || []);
     } catch (error) {
       console.error('Failed to load appointments:', error);
@@ -212,6 +237,38 @@ const DoctorAppointments = () => {
     setFilteredAppointments(filtered);
   };
 
+  // NEW: Load reschedule requests for all appointments (FIXED)
+  const loadRescheduleRequests = async () => {
+    try {
+      const allRequests = [];
+      for (const apt of appointments) {
+        if (apt.caseId) {
+          try {
+            const requests = await execute(() => patientService.getRescheduleRequests(apt.caseId));
+            if (requests && requests.length > 0) {
+              const pendingRequests = requests.filter(req => req.status?.toUpperCase() === 'PENDING');
+              pendingRequests.forEach(req => {
+                req.appointmentId = apt.id;
+                req.patientName = apt.patient?.fullName || 'Patient';
+                req.currentScheduledTime = apt.scheduledTime;
+              });
+              allRequests.push(...pendingRequests);
+            }
+
+            //Ignore Apove
+            allRequests = requests;
+
+          } catch (error) {
+            // Silently continue if request fails for a specific case
+          }
+        }
+      }
+      setRescheduleRequests(allRequests);
+    } catch (error) {
+      console.error('Failed to load reschedule requests:', error);
+    }
+  };  
+
   const updateStats = () => {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -247,7 +304,7 @@ const DoctorAppointments = () => {
         })
       );
       await loadAppointments();
-      setShowRescheduleModal(false);
+      //setShowRescheduleModal(false);
       setSelectedAppointment(null);
       rescheduleForm.reset();
     } catch (error) {
@@ -292,6 +349,62 @@ const DoctorAppointments = () => {
   //   }
   // };
 
+  // NEW: Handle reschedule request actions
+  const handleApproveReschedule = async (request, selectedTime) => {
+    try 
+    {
+      //alert('Req Id: '+ request.id + ', newScheduledTime:' + selectedTime + ', appointmentId: '+ request.appointmentId );
+      await execute(() => 
+        doctorService.approveRescheduleRequest(request.caseId, {
+          newScheduledTime: selectedTime,
+          appointmentId: request.appointmentId,
+          rescheduleId: request.id,
+          reason: request.reason
+        })
+      );
+      await loadAppointments();
+      setShowRescheduleRequestModal(false);
+      setSelectedRequest(null);
+    } catch (error) {
+      console.error('Failed to approve reschedule request:', error);
+    }
+  };
+
+  const handleRejectReschedule = async (request, reason) => {
+    try {
+      await execute(() => 
+        doctorService.rejectRescheduleRequest(request.id, {
+          rejectionReason: reason || 'Schedule conflict',
+          patientId: selectedAppointment.patientId,
+          caseId: request.caseId, 
+          doctorName: selectedAppointment.doctor?.fullName || 'Doctor Name'
+        })
+      );
+      await loadAppointments();
+      setShowRescheduleRequestModal(false);
+      setSelectedRequest(null);
+    } catch (error) {
+      console.error('Failed to reject reschedule request:', error);
+    }
+  };
+
+  const handleProposeNewTime = async (data) => {
+    try {
+      await execute(() => 
+        doctorService.proposeRescheduleTime(selectedRequest.appointmentId, {
+          proposedTime: data.proposedTime,
+          reason: data.reason
+        })
+      );
+      await loadAppointments();
+      setShowProposeNewTimeModal(false);
+      setSelectedRequest(null);
+      proposeRescheduleForm.reset();
+    } catch (error) {
+      console.error('Failed to propose new time:', error);
+    }
+  };
+
   const handleCompleteAppointment = async (appointment) => {
     try {
       // Create CompleteAppointmentDto object
@@ -330,6 +443,31 @@ const DoctorAppointments = () => {
     navigate(`/app/doctor/reports`, {
       state: { appointmentId: appointment.id }
     });
+  };
+  
+
+// Check if appointment has reschedule requests
+  const hasRescheduleRequest = (appointmentId) => {
+    return rescheduleRequests.some(req => req.appointmentId === appointmentId && req.status?.toLowerCase() === 'pending');
+  };
+
+  // Check if appointment has pending reschedule request
+  const isReshedulePending = (appointmentId) =>{
+      const rescheduleRequest = rescheduleRequests.filter(req => req.appointmentId === appointmentId);
+      var result = false;
+      if(rescheduleRequest.status?.toLowerCase() === 'pending')
+        result = true;
+      else
+        result = false;
+
+      console.log( 'isReshedulePending for appointment# '+ appointmentId +'? ' + result );
+      
+      return result;
+  };
+
+  // Get reschedule requests for a specific appointment
+  const getAppointmentRequests = (appointmentId) => {
+    return rescheduleRequests.filter(req => req.appointmentId === appointmentId);
   };
 
   // Calendar view functions - MONTHLY CALENDAR
@@ -541,6 +679,7 @@ const getStatusInfo = (status) => {
   };
 };
 
+
 const renderListView = () => {
   const groupedAppointments = groupAppointmentsByStatus(filteredAppointments);
 
@@ -603,16 +742,23 @@ const renderListView = () => {
                               </div>
                               <div>
                                 <h3 className="text-lg font-semibold text-gray-900">
-                                  {appointment.doctor?.fullName || 'Patient Name N/A'}
+                                  {appointment.patient?.fullName || 'Patient Name N/A'}
                                 </h3>
-                                <div className="flex items-center space-x-2 mt-1">
-                                  <StatusBadge status={appointment.status} />
-                                  {appointment.rescheduleCount > 0 && (
-                                    <Badge variant="warning" size="sm">
-                                      Rescheduled {appointment.rescheduleCount}x
-                                    </Badge>
-                                  )}
-                                </div>
+                                  <div className="flex items-center space-x-2 mt-1">
+                                    <StatusBadge status={appointment.status} />
+                                    {appointment.rescheduleCount > 0 && (
+                                      <Badge variant="warning" size="sm">
+                                        Rescheduled count: {appointment.rescheduleCount} 
+                                      </Badge>
+                                    )}
+                                    {/* NEW: Reschedule request badge */}
+                                    {hasRescheduleRequest(appointment.id) &&(
+                                      <Badge variant="purple" size="sm" className="bg-purple-100 text-purple-800">
+                                        <Bell className="w-3 h-3 mr-1" />
+                                        Reschedule Request
+                                      </Badge>
+                                    )}
+                                  </div>
                               </div>
                             </div>
                           </div>
@@ -736,6 +882,26 @@ const renderListView = () => {
                             View Report
                           </Button>
                         )}
+                        
+                            {/* NEW: View Reschedule Request Button */}
+                            {hasRescheduleRequest(appointment.id) && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                icon={<Bell className="w-4 h-4" />}
+                                onClick={() => {
+                                  const requests = getAppointmentRequests(appointment.id);
+                                  if (requests.length > 0) {
+                                    setSelectedRequest(requests[0]);
+                                    setSelectedAppointment(appointment);
+                                    setShowRescheduleRequestModal(true);
+                                  }
+                                }}
+                                className="w-full border-purple-600 text-purple-600 hover:bg-purple-50"
+                              >
+                                View Request
+                              </Button>
+                            )}                        
 
                         {/* Secondary Actions */}
                         <div className="pt-2 border-t border-gray-200 space-y-2">
@@ -906,6 +1072,8 @@ const renderListView = () => {
     );
   };
 
+
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -959,6 +1127,24 @@ const renderListView = () => {
           variant="danger"
         />
       </div>
+
+          {/* NEW: Reschedule Requests Alert */}
+          {rescheduleRequests.length > 0 && rescheduleRequests.
+            filter(req => req.status?.toLowerCase() === 'pending').length > 0  && (
+            <Card className="bg-purple-50 border-purple-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Bell className="w-5 h-5 text-purple-600 mr-3" />
+                  <div>
+                    <p className="text-purple-800 font-medium">
+                      You have {rescheduleRequests.length} pending reschedule request{rescheduleRequests.length > 1 ? 's' : ''}
+                    </p>
+                    <p className="text-purple-600 text-sm">Click on appointment cards to review requests</p>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          )}
 
       {/* Filters and View Toggle */}
       <Card>
@@ -1077,10 +1263,10 @@ const renderListView = () => {
       {viewMode === VIEW_MODES.LIST ? renderListView() : renderCalendarView()}
 
       {/* Reschedule Modal */}
-      <FormModal
+      {/* <FormModal
         isOpen={showRescheduleModal}
         onClose={() => {
-          setShowRescheduleModal(false);
+          //setShowRescheduleModal(false);
           setSelectedAppointment(null);
           rescheduleForm.reset();
         }}
@@ -1136,7 +1322,124 @@ const renderListView = () => {
             </div>
           )}
         </div>
-      </FormModal>
+      </FormModal> */}
+
+      {/* NEW: Reschedule Request Modal */}
+      <Modal
+        isOpen={showRescheduleRequestModal}
+        onClose={() => {
+          setShowRescheduleRequestModal(false);
+          setSelectedRequest(null);
+        }}
+        title="Reschedule Request from Patient"
+        size="lg"
+      >
+        {selectedRequest && (
+          <div className="space-y-4">
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+              <h4 className="font-semibold text-purple-900 mb-2">Request Details</h4>
+              <div className="space-y-2 text-sm">
+                <p><span className="font-medium">Patient:</span> {selectedRequest.patientName}</p>
+                <p><span className="font-medium">Current Time:</span> {formatDateTime(selectedRequest.currentScheduledTime)}</p>
+                <p><span className="font-medium">Reason:</span> {selectedRequest.reason}</p>
+                <p><span className="font-medium">Requested on:</span> {formatDateTime(selectedRequest.createdAt)}</p>
+              </div>
+            </div>
+
+            {selectedRequest.preferredTimes && selectedRequest.preferredTimes.split(',').length > 0 && (
+              <div>
+                <h4 className="font-semibold text-gray-900 mb-3">Patient's Preferred Times</h4>
+                <div className="space-y-2">
+                  { selectedRequest.preferredTimes.split(',').map((date, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50"
+                    >
+                      <span>{formatDateTime(date)}</span>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => handleApproveReschedule(selectedRequest, date)}
+                      >
+                        Accept This Time
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-4 border-t">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowProposeNewTimeModal(true);
+                  setShowRescheduleRequestModal(false);
+                }}
+                className="flex-1"
+              >
+                Propose Different Time
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => handleRejectReschedule(selectedRequest, 'Schedule conflict')}
+                className="flex-1"
+              >
+                Reject Request
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* NEW: Propose New Time Modal */}
+      <FormModal
+        isOpen={showProposeNewTimeModal}
+        onClose={() => {
+          setShowProposeNewTimeModal(false);
+          setSelectedRequest(null);
+          proposeRescheduleForm.reset();
+        }}
+        title="Propose New Time"
+        onSubmit={proposeRescheduleForm.handleSubmit(handleProposeNewTime)}
+        loading={loading}
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Proposed Date & Time *
+            </label>
+            <input
+              type="datetime-local"
+              {...proposeRescheduleForm.register('proposedTime')}
+              min={new Date().toISOString().slice(0, 16)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+            {proposeRescheduleForm.formState.errors.proposedTime && (
+              <p className="text-red-500 text-sm mt-1">
+                {proposeRescheduleForm.formState.errors.proposedTime.message}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Reason *
+            </label>
+            <textarea
+              {...proposeRescheduleForm.register('reason')}
+              rows="3"
+              placeholder="Explain why this time works better..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+            {proposeRescheduleForm.formState.errors.reason && (
+              <p className="text-red-500 text-sm mt-1">
+                {proposeRescheduleForm.formState.errors.reason.message}
+              </p>
+            )}
+          </div>
+        </div>
+      </FormModal>      
 
       {/* Cancel Modal */}
       <FormModal
@@ -1301,7 +1604,7 @@ const renderListView = () => {
               <StatusBadge status={selectedAppointment.status} size="lg" />
               {selectedAppointment.rescheduleCount > 0 && (
                 <Badge variant="warning">
-                  Rescheduled {selectedAppointment.rescheduleCount}x
+                  Rescheduled count {selectedAppointment.rescheduleCount}
                 </Badge>
               )}
             </div>
