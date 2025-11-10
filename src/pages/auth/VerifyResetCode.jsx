@@ -7,6 +7,7 @@ import { Lock, Eye, EyeOff, Stethoscope, Shield, CheckCircle, ArrowLeft } from '
 import Button from '../../components/common/Button';
 import authService from '../../services/api/authService';
 import { toast } from 'react-toastify';
+import medilinklog1 from '../../assets/medilinklog1.png'
 
 const verifyResetSchema = yup.object({
   code: yup.string()
@@ -109,8 +110,12 @@ const VerifyResetCode = () => {
         <div className="max-w-md w-full space-y-8">
           <div className="text-center">
             <div className="flex justify-center mb-4">
-              <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center">
-                <CheckCircle className="w-8 h-8 text-white" />
+              <div className="w-24 h-20 rounded-2xl flex items-center justify-center mb-2">
+                <img 
+                  src={medilinklog1} 
+                  alt="Custom icon" 
+                  className="w-24 h-24 object-contain"
+                />
               </div>
             </div>
             <h2 className="text-3xl font-bold text-gray-900">Password Reset Successful!</h2>

@@ -26,6 +26,7 @@ import {
 
 import { CountBadge } from '../common/Badge';
 import { useNotifications } from '../../hooks/useNotifications';
+import medilinklog1 from '../../assets/medilinklog1.png'
 
 const Sidebar = ({ open, onClose, userRole, userId }) => {
   const location = useLocation();
@@ -124,11 +125,15 @@ const Sidebar = ({ open, onClose, userRole, userId }) => {
           {/* Logo and brand */}
           <div className="flex items-center flex-shrink-0 px-4">
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-primary-500 rounded-lg flex items-center justify-center">
-                <Stethoscope className="w-5 h-5 text-white" />
+              <div className="w-19 h-19 rounded-2xl flex items-center justify-center mb-2">
+                <img 
+                  src={medilinklog1} 
+                  alt="Custom icon" 
+                  className="w-18 h-18 object-contain"
+                />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">MediLink+</h1>
+                <h1 className="text-xl font-bold text-gray-900">MediLink24</h1>
                 <p className="text-xs text-gray-500">Medical Consultation System</p>
               </div>
             </div>

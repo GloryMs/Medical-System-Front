@@ -7,6 +7,8 @@ import 'react-toastify/dist/ReactToastify.css';
 import { store } from './store';
 import { useAuth } from './hooks/useAuth';
 import { useSocket } from './hooks/useSocket';
+import { Elements } from '@stripe/react-stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
 
 
 // Layout Components
@@ -78,8 +80,17 @@ import NotFound from './pages/common/NotFound';
 import AccessDenied from './pages/common/AccessDenied';
 import ServerError from './pages/common/ServerError';
 
+//Payment
+import SubscriptionPayment from './pages/payment/Subscriptionpayment';
+import SubscriptionGuard from './pages/payment/SubscriptionGuard';
+import ConsultationPayment from './pages/payment/ConsultationPayment';
+
 // Styles
 import './styles/globals.css';
+
+// Initialize Stripe
+const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
+
 
 // Create a client for React Query
 const queryClient = new QueryClient({
@@ -163,10 +174,34 @@ const AppRoutes = () => {
                 <Route path="dashboard" element={<PatientDashboard />} />
                 <Route path="cases" element={<PatientCases />} />
                 <Route path="cases/:caseId" element={<CaseDetails />} />
+
+                {/* Consultation Payment - NEW - Requires Active Subscription */}
+                <Route
+                  path="consultation/payment/:caseId"
+                  element={
+                    <SubscriptionGuard>
+                      <Elements stripe={stripePromise}>
+                        <ConsultationPayment />
+                      </Elements>
+                    </SubscriptionGuard>
+                  }
+                />
+
                 <Route path="cases/:caseId/edit" element={<EditCase />} />
                 <Route path="cases/create" element={<CreateCase />} />
                 <Route path="dependents" element={<DependentsManagement />} />
                 <Route path="appointments" element={<PatientAppointments />} />
+
+                {/* Protected Routes - Require Active Subscription */}
+                {/* <Route
+                  path="appointments"
+                  element={
+                    <SubscriptionGuard>
+                      <PatientAppointments />
+                    </SubscriptionGuard>
+                  }
+                /> */}
+
                 <Route path="appointments/:id" element={<AppointmentDetails />} />
                 <Route path="notifications" element={<PatientNotifications />} />
                 <Route path="payments" element={<PatientPayments />} />
@@ -175,6 +210,15 @@ const AppRoutes = () => {
                 <Route path="complaints" element={<PatientComplaints />} />
                 <Route path="complaints/:id" element={<ComplaintDetails />} />
                 <Route path="subscription" element={<SubscriptionManagement />} />
+                {/* Subscription Payment - NEW - Always accessible */}
+                <Route 
+                  path="subscription/payment" 
+                  element={
+                    <Elements stripe={stripePromise}>
+                      <SubscriptionPayment />
+                    </Elements>
+                  } 
+                />
                 <Route path="settings" element={<PatientSettings />} /> 
                 <Route path="communication" element={<DoctorCommunication />} />           
               </Routes>

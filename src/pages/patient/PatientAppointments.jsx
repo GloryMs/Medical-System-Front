@@ -334,6 +334,14 @@ const PatientAppointments = () => {
     }
   };
 
+  const handlePayConsultationStripe = (appointment) => {
+    navigate(`/app/patient/consultation/payment/${appointment.caseId}`, {
+      state: {
+        appointment: appointment
+      }
+    });
+  };
+
   const handleUpdateRescheduleRequest = async (requestId, status) => {
     try {
       await execute(() => 

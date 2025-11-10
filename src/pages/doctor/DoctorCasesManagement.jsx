@@ -524,12 +524,12 @@ const DoctorCasesManagement = () => {
         break;
 
       case 'SCHEDULED':
-        actions.push({
-          label: 'Re-Schedule',
-          icon: CalendarIcon,
-          variant: 'outline',
-          onClick: () => handleRescheduleAppointment(case_)
-        });
+        // actions.push({
+        //   label: 'Re-Schedule',
+        //   icon: CalendarIcon,
+        //   variant: 'outline',
+        //   onClick: () => handleRescheduleAppointment(case_)
+        // });
         break;
 
       case 'PAYMENT_PENDING':

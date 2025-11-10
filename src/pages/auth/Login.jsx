@@ -4,11 +4,12 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-// import Button from '../../components/auth/Button';
 import Button from '../../components/common/Button';
 import Input from '../../components/auth/Input';
 import RoleSelectionModal from '../../components/auth/RoleSelectionModal';
-import { Mail, Lock, AlertCircle, Stethoscope  } from 'lucide-react';
+import { Mail, Lock, Stethoscope } from 'lucide-react';
+import { toast } from 'react-toastify';
+import medilinklog1 from '../../assets/medilinklog1.png'
 
 const loginSchema = yup.object({
   email: yup
@@ -26,7 +27,6 @@ const Login = () => {
   const { login, googleLogin } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [pendingGoogleCredential, setPendingGoogleCredential] = useState(null);
 
@@ -44,10 +44,12 @@ const Login = () => {
    */
   const onSubmit = async (data) => {
     setIsLoading(true);
-    setErrorMessage('');
 
     try {
       const response = await login(data);
+      
+      // Show success toast
+      toast.success('Login successful! Redirecting...');
       
       // Navigate based on user role
       const role = response.role;
@@ -73,7 +75,10 @@ const Login = () => {
       const message = error.response?.data?.message || 
                      error.message || 
                      'Login failed. Please check your credentials.';
-      setErrorMessage(message);
+      
+      // Show error toast
+      toast.error(message);
+      
       setError('root', {
         type: 'manual',
         message: message,
@@ -101,13 +106,15 @@ const Login = () => {
     if (!pendingGoogleCredential) return;
 
     setGoogleLoading(true);
-    setErrorMessage('');
 
     try {
       const response = await googleLogin({
         idToken: pendingGoogleCredential,
         role: selectedRole
       });
+
+      // Show success toast
+      toast.success('Google Sign-In successful! Redirecting...');
 
       // Close modal
       setShowRoleModal(false);
@@ -131,7 +138,11 @@ const Login = () => {
       navigate(dashboardRoute);
     } catch (error) {
       console.error('Google Sign-In error:', error);
-      setErrorMessage('Google Sign-In failed. Please try again.');
+      const message = error?.message || 'Google Sign-In failed. Please try again.';
+      
+      // Show error toast
+      toast.error(message);
+      
       setError('root', {
         type: 'manual',
         message: 'Google Sign-In failed. Please try again.',
@@ -148,7 +159,7 @@ const Login = () => {
    */
   const handleGoogleError = (error) => {
     console.error('Google Sign-In error:', error);
-    setErrorMessage('Google Sign-In failed. Please try again or use email login.');
+    toast.error('Google Sign-In failed. Please try again or use email login.');
     setError('root', {
       type: 'manual',
       message: 'Google Sign-In failed. Please try again.',
@@ -168,8 +179,12 @@ const Login = () => {
         <div className="max-w-md w-full space-y-8">
           <div className="text-center">
             <div className="flex justify-center">
-              <div className="w-16 h-16 bg-primary-500 rounded-2xl flex items-center justify-center mb-4">
-                <Stethoscope className="w-8 h-8 text-white" />
+              <div className="w-24 h-20 rounded-2xl flex items-center justify-center mb-2">
+                <img 
+                  src={medilinklog1} 
+                  alt="Custom icon" 
+                  className="w-24 h-24 object-contain"
+                />
               </div>
             </div>
             <h2 className="text-3xl font-bold text-gray-900">Welcome Back</h2>
@@ -180,16 +195,6 @@ const Login = () => {
 
         {/* Login Form Card */}
         <div className="bg-white rounded-xl shadow-md p-8 space-y-6">
-          {/* Error Message */}
-          {errorMessage && (
-            <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md flex items-start">
-              <AlertCircle className="w-5 h-5 text-red-500 mr-3 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="text-sm text-red-700">{errorMessage}</p>
-              </div>
-            </div>
-          )}
-
           {/* Google Sign-In Button */}
           <div className="space-y-3">
             <div id="google-signin-button" className="w-full"></div>
@@ -239,7 +244,7 @@ const Login = () => {
             <div className="flex items-center justify-between">
               <div className="text-sm">
                 <Link
-                  to="/auth/forgot-password"
+                  to="/forgot-password"
                   className="font-medium text-primary-600 hover:text-primary-500 transition-colors"
                 >
                   Forgot your password?
@@ -263,7 +268,7 @@ const Login = () => {
             <p className="text-sm text-gray-600">
               Don't have an account?{' '}
               <Link
-                to="/auth/register"
+                to="/register"
                 className="font-semibold text-primary-600 hover:text-primary-500 transition-colors"
               >
                 Sign up now
@@ -271,8 +276,6 @@ const Login = () => {
             </p>
           </div>
         </div>
-
-        {/* Footer - Removed Terms/Privacy as it's not in Register */}
       </div>
 
       {/* Role Selection Modal */}
@@ -309,73 +312,54 @@ const GoogleSignInInitializer = ({ onCredentialReceived, onError }) => {
       return;
     }
 
-    // Load Google Sign-In script
+    // Load Google Identity Services script
     const script = document.createElement('script');
     script.src = 'https://accounts.google.com/gsi/client';
     script.async = true;
     script.defer = true;
-    
     script.onload = () => {
-      console.log('Google Sign-In script loaded successfully');
-      // Wait a bit for Google to initialize
-      setTimeout(() => {
-        if (window.google?.accounts?.id) {
-          initializeGoogleSignIn();
-        } else {
-          console.error('Google Sign-In API not available after script load');
-          onError(new Error('Failed to initialize Google Sign-In'));
-        }
-      }, 100);
+      console.log('Google Identity Services script loaded');
+      initializeGoogleSignIn();
     };
-
     script.onerror = () => {
-      console.error('Failed to load Google Sign-In script');
+      console.error('Failed to load Google Identity Services script');
       onError(new Error('Failed to load Google Sign-In'));
     };
 
     document.body.appendChild(script);
 
     return () => {
-      // Cleanup: remove script when component unmounts
-      if (document.body.contains(script)) {
-        document.body.removeChild(script);
+      // Cleanup
+      const existingScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+      if (existingScript) {
+        document.body.removeChild(existingScript);
       }
     };
-  }, [GOOGLE_CLIENT_ID, onError]);
+  }, [GOOGLE_CLIENT_ID]);
 
   const initializeGoogleSignIn = () => {
     try {
-      console.log('Initializing Google Sign-In with Client ID:', GOOGLE_CLIENT_ID);
-      
-      // Initialize Google Sign-In
       window.google.accounts.id.initialize({
         client_id: GOOGLE_CLIENT_ID,
         callback: handleCredentialResponse,
         auto_select: false,
-        cancel_on_tap_outside: true
+        cancel_on_tap_outside: true,
       });
 
       // Render the button
-      const buttonDiv = document.getElementById('google-signin-button');
-      if (buttonDiv) {
-        // Clear any existing content
-        buttonDiv.innerHTML = '';
-        
-        window.google.accounts.id.renderButton(
-          buttonDiv,
-          {
-            theme: 'outline',
-            size: 'large',
-            text: 'signin_with',
-            shape: 'rectangular',
-            logo_alignment: 'left',
-            width: buttonDiv.offsetWidth || 350
-          }
-        );
-        console.log('Google Sign-In button rendered successfully');
-      } else {
-        console.error('google-signin-button div not found');
-      }
+      window.google.accounts.id.renderButton(
+        document.getElementById('google-signin-button'),
+        {
+          theme: 'outline',
+          size: 'large',
+          width: '100%',
+          text: 'signin_with',
+          shape: 'rectangular',
+          logo_alignment: 'left',
+        }
+      );
+
+      console.log('Google Sign-In initialized successfully');
     } catch (error) {
       console.error('Error initializing Google Sign-In:', error);
       onError(error);
@@ -383,13 +367,11 @@ const GoogleSignInInitializer = ({ onCredentialReceived, onError }) => {
   };
 
   const handleCredentialResponse = (response) => {
-    console.log('Received credential response from Google');
+    console.log('Google credential received');
     if (response.credential) {
-      console.log('Credential received, length:', response.credential.length);
       onCredentialReceived(response.credential);
     } else {
-      console.error('No credential in response');
-      onError(new Error('No credential received'));
+      onError(new Error('No credential received from Google'));
     }
   };
 

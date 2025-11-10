@@ -393,7 +393,8 @@ const DoctorAppointments = () => {
       await execute(() => 
         doctorService.proposeRescheduleTime(selectedRequest.appointmentId, {
           proposedTime: data.proposedTime,
-          reason: data.reason
+          reason: data.reason,
+          rescheduleId: selectedRequest.id
         })
       );
       await loadAppointments();

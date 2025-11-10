@@ -186,7 +186,8 @@ const DoctorSchedule = () => {
         patientId: selectedCase.patientId,
         scheduledTime: data.scheduledTime,
         duration: data.duration,
-        consultationType: data.consultationType
+        patientName: data.patientName,
+        consultationType: data.consultationType,
       };
 
       await execute(() => doctorService.scheduleAppointment(appointmentData));

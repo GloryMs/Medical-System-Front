@@ -97,11 +97,11 @@ const ConversationList = ({
                 : 'No conversations found'}
             </p>
             {/* Debug info */}
-            {process.env.NODE_ENV === 'development' && (
+            {/* {process.env.NODE_ENV === 'development' && (
               <p className="text-xs text-red-500 mt-2">
                 Conversations value: {JSON.stringify(conversations)}
               </p>
-            )}
+            )} */}
           </div>
         )}
       </div>

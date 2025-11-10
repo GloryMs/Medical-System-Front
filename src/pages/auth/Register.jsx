@@ -6,6 +6,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import { Eye, EyeOff, Mail, Lock, User, Stethoscope, Phone } from 'lucide-react';
 import Button from '../../components/common/Button';
 import { useAuth } from '../../hooks/useAuth';
+import medilinklog1 from '../../assets/medilinklog1.png'
 
 const registerSchema = yup.object({
   firstName: yup.string().required('First name is required'),
@@ -58,9 +59,13 @@ const Register = () => {
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <div className="flex justify-center">
-            <div className="w-16 h-16 bg-primary-500 rounded-2xl flex items-center justify-center mb-4">
-              <Stethoscope className="w-8 h-8 text-white" />
-            </div>
+              <div className="w-24 h-20 rounded-2xl flex items-center justify-center mb-2">
+                <img 
+                  src={medilinklog1} 
+                  alt="Custom icon" 
+                  className="w-24 h-24 object-contain"
+                />
+              </div>
           </div>
           <h2 className="text-3xl font-bold text-gray-900">Create your account</h2>
           <p className="mt-2 text-sm text-gray-600">

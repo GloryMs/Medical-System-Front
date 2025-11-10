@@ -223,6 +223,15 @@ const SubscriptionManagement = () => {
     }
   };
 
+  const handleSubscriptionUpgrade_Stripe = (plan) => {
+    navigate('/app/patient/subscription/payment', {
+      state: {
+        plan: plan,
+        billingCycle: billingCycle
+      }
+    });
+  };
+
   const handleSubscriptionCancel = async (reason) => {
     try {
       await execute(() => patientService.cancelSubscription(reason));
