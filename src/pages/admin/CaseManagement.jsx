@@ -57,6 +57,8 @@ import { useApi } from '../../hooks/useApi';
 import { useUI } from '../../hooks/useUI';
 import adminService from '../../services/api/adminService';
 import commonService from '../../services/api/commonService';
+import CaseAnalyticsModal from './Caseanalyticsmodal';
+
 
 // Validation schemas
 const assignmentSchema = yup.object({
@@ -84,6 +86,7 @@ const CaseManagement = () => {
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showReassignModal, setShowReassignModal] = useState(false);
+  const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
   
   // Filters and search
   const [searchTerm, setSearchTerm] = useState('');
@@ -195,17 +198,68 @@ const CaseManagement = () => {
     resolver: yupResolver(reassignmentSchema)
   });
 
+  // // Load data
+  // const loadCases = async () => {
+  //   try {
+  //     const response = await execute(() => adminService.getAllCases());
+  //     if (response?.data) {
+  //       setCases(response.data);
+  //       setFilteredCases(response.data);
+  //       calculateStats(response.data);
+  //     }
+  //     else{
+  //       showToast('No data found', 'error');
+  //      }
+  //     }
+  //   catch (error) {
+  //     showToast('Failed to load cases', 'error');
+  //   }
+  // };
+
+
   // Load data
   const loadCases = async () => {
     try {
       const response = await execute(() => adminService.getAllCases());
-      if (response?.data) {
-        setCases(response.data);
-        setFilteredCases(response.data);
-        calculateStats(response.data);
+      
+      console.log('Full response:', response);
+      
+      if (response) {
+        // Check if response is paginated (Spring Page object)
+        if (response.content && Array.isArray(response.content)) {
+          // Paginated response from Spring Data
+          console.log('Handling paginated response');
+          const casesArray = response.content;
+          setCases(casesArray);
+          setFilteredCases(casesArray);
+          calculateStats(casesArray);
+        } 
+        // Check if response is a simple array
+        else if (Array.isArray(response)) {
+          console.log('Handling array response');
+          setCases(response);
+          setFilteredCases(response);
+          calculateStats(response);
+        }
+        // Handle empty response
+        else {
+          console.warn('Unexpected response format:', response);
+          setCases([]);
+          setFilteredCases([]);
+          calculateStats([]);
+          showToast('No cases found', 'info');
+        }
+      } else {
+        console.warn('No data in response');
+        setCases([]);
+        setFilteredCases([]);
+        showToast('No cases found', 'info');
       }
     } catch (error) {
+      console.error('Error loading cases:', error);
       showToast('Failed to load cases', 'error');
+      setCases([]);
+      setFilteredCases([]);
     }
   };
 
@@ -390,8 +444,8 @@ const CaseManagement = () => {
   const handleViewCaseDetails = async (caseItem) => {
     try {
       const response = await execute(() => adminService.getCaseById(caseItem.id));
-      if (response?.data) {
-        setSelectedCase(response.data);
+      if (response) {
+        setSelectedCase(response);
         setShowDetailsModal(true);
       }
     } catch (error) {
@@ -402,18 +456,18 @@ const CaseManagement = () => {
   // Table columns
   const columns = [
     {
-      header: 'Case ID',
-      accessor: 'id',
-      cell: (caseItem) => (
+      title: 'Case ID',
+      key: 'id',
+      render: (caseItem) => (
         <div className="font-mono text-sm">
           #{caseItem.id}
         </div>
       )
     },
     {
-      header: 'Patient',
-      accessor: 'patient',
-      cell: (caseItem) => (
+      title: 'Patient',
+      key: 'patient',
+      render: (caseItem) => (
         <div className="flex items-center space-x-3">
           <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
             <User className="w-4 h-4 text-blue-600" />
@@ -430,9 +484,9 @@ const CaseManagement = () => {
       )
     },
     {
-      header: 'Case Title',
-      accessor: 'caseTitle',
-      cell: (caseItem) => (
+      title: 'Case Title',
+      key: 'caseTitle',
+      render: (caseItem) => (
         <div className="max-w-xs">
           <div className="font-medium text-gray-900 truncate">
             {caseItem.caseTitle || 'Untitled Case'}
@@ -444,9 +498,9 @@ const CaseManagement = () => {
       )
     },
     {
-      header: 'Status',
-      accessor: 'status',
-      cell: (caseItem) => (
+      title: 'Status',
+      key: 'status',
+      render: (caseItem) => (
         <StatusBadge 
           status={caseItem.status} 
           variant={getStatusColor(caseItem.status)}
@@ -456,9 +510,9 @@ const CaseManagement = () => {
       )
     },
     {
-      header: 'Urgency',
-      accessor: 'urgencyLevel',
-      cell: (caseItem) => (
+      title: 'Urgency',
+      key: 'urgencyLevel',
+      render: (caseItem) => (
         <Badge 
           variant={getUrgencyColor(caseItem.urgencyLevel)}
           size="sm"
@@ -469,9 +523,9 @@ const CaseManagement = () => {
       )
     },
     {
-      header: 'Assigned Doctor',
-      accessor: 'assignedDoctor',
-      cell: (caseItem) => (
+      title: 'Assigned Doctor',
+      key: 'assignedDoctor',
+      render: (caseItem) => (
         <div>
           {caseItem.assignedDoctorId ? (
             <div className="flex items-center space-x-2">
@@ -487,9 +541,9 @@ const CaseManagement = () => {
       )
     },
     {
-      header: 'Created',
-      accessor: 'createdAt',
-      cell: (caseItem) => (
+      title: 'Created',
+      key: 'createdAt',
+      render: (caseItem) => (
         <div className="text-sm">
           <div className="font-medium text-gray-900">
             {new Date(caseItem.createdAt).toLocaleDateString()}
@@ -501,9 +555,9 @@ const CaseManagement = () => {
       )
     },
     {
-      header: 'Actions',
-      accessor: 'actions',
-      cell: (caseItem) => (
+      title: 'Actions',
+      kye: 'actions',
+      render: (caseItem) => (
         <div className="flex items-center space-x-2">
           <Button
             variant="ghost"
@@ -571,10 +625,12 @@ const CaseManagement = () => {
           <Button
             variant="outline"
             icon={<BarChart3 className="w-4 h-4" />}
-            onClick={() => navigate('/admin/reports')}
+            // onClick={() => setShowAnalyticsModal(true)}
+            onClick={() => navigate('/app/admin/cases/analytics')}
           >
             Analytics
           </Button>
+
         </div>
       </div>
 
@@ -733,6 +789,14 @@ const CaseManagement = () => {
         />
       </Card>
 
+
+
+      Anylytics Modal
+      <CaseAnalyticsModal
+        isOpen={showAnalyticsModal}
+        onClose={() => setShowAnalyticsModal(false)}
+      />
+
       {/* Case Assignment Modal */}
       <FormModal
         isOpen={showAssignModal}
@@ -823,14 +887,14 @@ const CaseManagement = () => {
       </FormModal>
 
       {/* Case Details Modal */}
-      <Modal
+      <FormModal
         isOpen={showDetailsModal}
         onClose={() => {
           setShowDetailsModal(false);
           setSelectedCase(null);
         }}
         title="Case Details"
-        size="4xl"
+        size="lg"
       >
         {selectedCase && (
           <div className="space-y-6">
@@ -1124,7 +1188,7 @@ const CaseManagement = () => {
             </div>
           </div>
         )}
-      </Modal>
+      </FormModal>
 
       {/* Empty State */}
       {filteredCases.length === 0 && !loading && (

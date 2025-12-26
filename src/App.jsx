@@ -74,6 +74,8 @@ import SystemReports from './pages/admin/SystemReports';
 import SystemConfiguration from './pages/admin/SystemConfiguration';
 import MedicalConfiguration from './pages/admin/MedicalConfiguration';
 import AdminSettings from './pages/admin/AdminSettings';
+import CaseAnalytics from './pages/admin/Caseanalytics';
+import PaymentAnalytics from './pages/admin/PaymentAnalytics';
 
 // Common Pages
 import NotFound from './pages/common/NotFound';
@@ -262,6 +264,8 @@ const AppRoutes = () => {
                 <Route path="configuration" element={<SystemConfiguration />} />
                 <Route path="medical-config" element={<MedicalConfiguration />} />
                 <Route path="settings" element={<AdminSettings />} />
+                <Route path="cases/analytics" element={<CaseAnalytics />} />
+                <Route path="payment-analytics" element={<PaymentAnalytics />} />
               </Routes>
             </ProtectedRoute>
           } />

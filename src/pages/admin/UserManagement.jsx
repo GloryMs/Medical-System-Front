@@ -81,8 +81,8 @@ const UserManagement = () => {
       setStats({
         totalUsers: response.totalUsers || 0,
         activeUsers: response.activeUsers || 0,
-        doctors: response.totalDoctors || 0,
-        pendingUsers: response.pendingVerifications || 0
+        doctors: response.doctors || 0,
+        pendingUsers: response.pendingUsers || 0
       });
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -264,13 +264,13 @@ const UserManagement = () => {
           {/* Basic Information */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-              <p className="text-sm text-gray-900">{user.firstName || 'N/A'}</p>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+              <p className="text-sm text-gray-900">{user.fullName || 'N/A'}</p>
             </div>
-            <div>
+            {/* <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
               <p className="text-sm text-gray-900">{user.lastName || 'N/A'}</p>
-            </div>
+            </div> */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
               <p className="text-sm text-gray-900">{user.email}</p>
@@ -611,8 +611,8 @@ const UserManagement = () => {
                         </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">
-                            {user.firstName && user.lastName ? 
-                              `${user.firstName} ${user.lastName}` : 
+                            {user.fullName  ? 
+                              `${user.fullName}` : 
                               user.email
                             }
                           </div>

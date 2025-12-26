@@ -186,7 +186,7 @@ const DoctorSchedule = () => {
         patientId: selectedCase.patientId,
         scheduledTime: data.scheduledTime,
         duration: data.duration,
-        patientName: data.patientName,
+        patientName: selectedCase.patientName,
         consultationType: data.consultationType,
       };
 

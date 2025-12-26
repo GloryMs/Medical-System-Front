@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
+import { useNavigate } from 'react-router-dom';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
 import {
@@ -33,7 +34,8 @@ import {
   Activity,
   Mail,
   Phone,
-  MapPin
+  MapPin,
+  BarChart3
 } from 'lucide-react';
 
 import Card, { StatsCard, AlertCard } from '../../components/common/Card';
@@ -62,6 +64,7 @@ const refundSchema = yup.object({
 const PaymentManagement = () => {
   const { user } = useAuth();
   const { execute, loading } = useApi();
+  const navigate = useNavigate();
 
   // State management
   const [payments, setPayments] = useState([]);
@@ -610,6 +613,13 @@ const PaymentManagement = () => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Payment Management</h1>
         <div className="flex space-x-3">
+          <Button
+            onClick={() => navigate('/app/admin/payment-analytics')}
+            icon={<BarChart3 className="w-4 h-4" />}
+            variant="primary"
+          >
+            Analytics
+          </Button>
           <Button
             onClick={() => {
               loadPayments();

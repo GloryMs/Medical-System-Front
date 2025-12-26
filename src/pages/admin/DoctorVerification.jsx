@@ -41,6 +41,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useApi } from '../../hooks/useApi';
 import { useUI } from '../../hooks/useUI';
 import adminService from '../../services/api/adminService';
+import { render } from '@testing-library/react';
 
 // Validation schemas
 const verificationSchema = yup.object({
@@ -90,13 +91,13 @@ const DoctorVerification = () => {
   const loadPendingVerifications = async () => {
     try {
       const response = await execute(() => adminService.getPendingDoctors());
-      if (response?.data) {
-        setPendingDoctors(response.data);
-        setFilteredDoctors(response.data);
+      if (response) {
+        setPendingDoctors(response);
+        setFilteredDoctors(response);
         
         // Calculate stats
-        const total = response.data.length;
-        const thisWeekCount = response.data.filter(doctor => {
+        const total = response.length;
+        const thisWeekCount = response.filter(doctor => {
           const submittedDate = new Date(doctor.submittedAt);
           const weekAgo = new Date();
           weekAgo.setDate(weekAgo.getDate() - 7);
@@ -187,8 +188,8 @@ const DoctorVerification = () => {
   const handleGetDetails = async (doctorId) => {
     try {
       const response = await execute(() => adminService.getDoctorVerificationDetails(doctorId));
-      if (response?.data) {
-        setSelectedDoctor(response.data);
+      if (response) {
+        setSelectedDoctor(response);
         setShowVerificationModal(true);
       }
     } catch (error) {
@@ -199,9 +200,9 @@ const DoctorVerification = () => {
   // Table columns configuration
   const columns = [
     {
-      header: 'Doctor',
-      accessor: 'fullName',
-      cell: (doctor) => (
+      title: 'Doctor',
+      accessorKey: 'fullName',
+      render: (doctor) => (
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
             <User className="w-5 h-5 text-primary-600" />
@@ -214,18 +215,18 @@ const DoctorVerification = () => {
       )
     },
     {
-      header: 'Specialization',
-      accessor: 'specialization',
-      cell: (doctor) => (
+      title: 'Specialization',
+      key: 'specialization',
+      render: (doctor) => (
         <Badge variant="info" size="sm">
           {doctor.specialization}
         </Badge>
       )
     },
     {
-      header: 'Submitted',
-      accessor: 'submittedAt',
-      cell: (doctor) => (
+      title: 'Submitted',
+      key: 'submittedAt',
+      render: (doctor) => (
         <div className="text-sm">
           <div className="font-medium text-gray-900">
             {new Date(doctor.submittedAt).toLocaleDateString()}
@@ -237,9 +238,9 @@ const DoctorVerification = () => {
       )
     },
     {
-      header: 'Documents',
-      accessor: 'documents',
-      cell: (doctor) => (
+      title: 'Documents',
+      key: 'documents',
+      render: (doctor) => (
         <Button
           variant="ghost"
           size="sm"
@@ -251,9 +252,9 @@ const DoctorVerification = () => {
       )
     },
     {
-      header: 'Actions',
-      accessor: 'actions',
-      cell: (doctor) => (
+      title: 'Actions',
+      key: 'actions',
+      render: (doctor) => (
         <div className="flex items-center space-x-2">
           <Button
             variant="ghost"
@@ -319,7 +320,7 @@ const DoctorVerification = () => {
         />
         <StatsCard
           title="Total Doctors"
-          value="145"
+          value="20"
           icon={<Users className="w-6 h-6 text-purple-600" />}
           trend={{ value: 5, isPositive: true }}
           className="border-l-4 border-l-purple-500"

@@ -101,7 +101,7 @@ const adminService = {
   },
 
   getCaseMetrics: async () => {
-    return await api.get('/admin-service/api/patients/cases/all-metrics');
+    return await api.get('/admin-service/api/admin/cases/metrics');
   },
 
   // Payment Management
@@ -120,6 +120,22 @@ const adminService = {
 
   processRefund: async (refundData) => {
     return await api.post('/admin-service/api/admin/payments/refund', refundData);
+  },
+
+  getCaseAnalytics: async (startDate = null, endDate = null) => {
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+
+    return await api.get(`/admin-service/api/admin/cases/analytics?${params}`);
+  },
+
+  getPaymentAnalytics: async (startDate = null, endDate = null) => {
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+
+    return await api.get(`/admin-service/api/admin/payments/analytics?${params}`);
   },
 
   // Complaint Management

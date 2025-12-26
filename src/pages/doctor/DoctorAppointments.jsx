@@ -743,7 +743,7 @@ const renderListView = () => {
                               </div>
                               <div>
                                 <h3 className="text-lg font-semibold text-gray-900">
-                                  {appointment.patient?.fullName || 'Patient Name N/A'}
+                                  {appointment.patientName || 'Patient Name N/A'}
                                 </h3>
                                   <div className="flex items-center space-x-2 mt-1">
                                     <StatusBadge status={appointment.status} />

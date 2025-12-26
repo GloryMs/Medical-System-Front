@@ -472,28 +472,24 @@ const PatientCases = () => {
           title="Total Cases"
           value={stats.totalCases}
           icon={<FileText className="w-6 h-6" />}
-          change="+2 this month"
           changeType="increase"
         />
         <StatsCard
           title="Active Cases"
           value={stats.activeCases}
           icon={<Activity className="w-6 h-6" />}
-          change="2 in progress"
           changeType="neutral"
         />
         <StatsCard
           title="Completed Cases"
           value={stats.completedCases}
           icon={<CheckCircle className="w-6 h-6" />}
-          change="+1 this week"
           changeType="increase"
         />
         <StatsCard
           title="Upcoming Appointments"
           value={stats.upcomingAppointments}
           icon={<Calendar className="w-6 h-6" />}
-          change="Next: Tomorrow"
           changeType="neutral"
         />
       </div>
