@@ -110,7 +110,6 @@ const PaymentManagement = () => {
     loadPayments();
     loadSubscriptionPayments();
     loadConsultationPayments();
-    loadPaymentStats();
   }, []);
 
   // Debounced search effect
@@ -130,8 +129,10 @@ const PaymentManagement = () => {
       if (searchTerm.trim()) filters.search = searchTerm.trim();
 
       const response = await execute(() => adminService.getAllPayments(filters));
-      if (response.success) {
-        setPayments(response.data || []);
+      if (response) {
+        const paymentsData = response || [];
+        setPayments(paymentsData);
+        calculatePaymentStats(paymentsData);
       }
     } catch (error) {
       console.error('Failed to load payments:', error);
@@ -142,8 +143,8 @@ const PaymentManagement = () => {
   const loadSubscriptionPayments = async () => {
     try {
       const response = await execute(() => adminService.getSubscriptionPayments());
-      if (response.success) {
-        setSubscriptionPayments(response.data || []);
+      if (response) {
+        setSubscriptionPayments(response || []);
       }
     } catch (error) {
       console.error('Failed to load subscription payments:', error);
@@ -153,23 +154,79 @@ const PaymentManagement = () => {
   const loadConsultationPayments = async () => {
     try {
       const response = await execute(() => adminService.getConsultationPayments());
-      if (response.success) {
-        setConsultationPayments(response.data || []);
+      if (response) {
+        setConsultationPayments(response || []);
       }
     } catch (error) {
       console.error('Failed to load consultation payments:', error);
     }
   };
 
-  const loadPaymentStats = async () => {
-    try {
-      const response = await execute(() => adminService.getDashboardStats());
-      if (response.success && response.data.paymentMetrics) {
-        setStats(response.data.paymentMetrics);
-      }
-    } catch (error) {
-      console.error('Failed to load payment statistics:', error);
+  const calculatePaymentStats = (paymentsData) => {
+    if (!paymentsData || paymentsData.length === 0) {
+      setStats({
+        totalPayments: 0,
+        totalRevenue: 0,
+        pendingPayments: 0,
+        totalRefunds: 0,
+        monthlyGrowth: 0,
+        averageTransactionValue: 0
+      });
+      return;
     }
+
+    // Calculate total payments count
+    const totalPayments = paymentsData.length;
+
+    // Calculate total revenue (sum of completed payments)
+    const totalRevenue = paymentsData
+      .filter(p => p.status.toLowerCase() === 'completed' || p.status.toLowerCase() === 'success')
+      .reduce((sum, p) => sum + (p.amount || 0), 0);
+
+    // Calculate pending payments count
+    const pendingPayments = paymentsData.filter(p => p.status.toLowerCase() === 'pending').length;
+
+    // Calculate total refunds
+    const totalRefunds = paymentsData
+      .filter(p => p.refundedAmount)
+      .reduce((sum, p) => sum + (p.refundedAmount || 0), 0);
+
+    // Calculate average transaction value
+    const averageTransactionValue = totalPayments > 0 ? totalRevenue / totalPayments : 0;
+
+    // Calculate monthly growth (comparing this month vs last month)
+    const now = new Date();
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+
+    const thisMonthRevenue = paymentsData
+      .filter(p => {
+        const paymentDate = new Date(p.createdAt);
+        return paymentDate >= thisMonthStart && (p.status.toLowerCase() === 'completed' || p.status.toLowerCase() === 'success');
+      })
+      .reduce((sum, p) => sum + (p.amount || 0), 0);
+
+    const lastMonthRevenue = paymentsData
+      .filter(p => {
+        const paymentDate = new Date(p.createdAt);
+        return paymentDate >= lastMonthStart && paymentDate <= lastMonthEnd && (p.status.toLowerCase() === 'completed' 
+        || p.status.toLowerCase() === 'success');
+      })
+      .reduce((sum, p) => sum + (p.amount || 0), 0);
+
+    const monthlyGrowth = lastMonthRevenue > 0
+      ? ((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100
+      : 0;
+
+    setStats({
+      totalPayments,
+      totalRevenue,
+      pendingPayments,
+      totalRefunds,
+      monthlyGrowth: Math.round(monthlyGrowth * 10) / 10, // Round to 1 decimal
+      averageTransactionValue
+    });
   };
 
   const applyFilters = () => {
@@ -258,7 +315,6 @@ const PaymentManagement = () => {
         setShowRefundModal(false);
         resetRefund();
         loadPayments();
-        loadPaymentStats();
       }
     } catch (error) {
       console.error('Failed to process refund:', error);
@@ -365,7 +421,7 @@ const PaymentManagement = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Date:</span>
-                  <span className="font-medium">{formatDate(payment.createdAt)}</span>
+                  <span className="font-medium">{formatDate(payment.processedAt)}</span>
                 </div>
               </div>
             </div>
@@ -625,7 +681,6 @@ const PaymentManagement = () => {
               loadPayments();
               loadSubscriptionPayments();
               loadConsultationPayments();
-              loadPaymentStats();
             }}
             disabled={loading}
             icon={<RefreshCw className={loading ? 'w-4 h-4 animate-spin' : 'w-4 h-4'} />}

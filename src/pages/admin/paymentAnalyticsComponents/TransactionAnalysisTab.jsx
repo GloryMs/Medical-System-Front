@@ -14,6 +14,24 @@ const TransactionAnalysisTab = ({ data }) => {
     );
   }
 
+  // Transform hourlyDistribution object to array format for chart
+  const transformHourlyDistribution = (hourlyDistribution) => {
+    if (!hourlyDistribution) return [];
+
+    // If it's already an array, return it
+    if (Array.isArray(hourlyDistribution)) return hourlyDistribution;
+
+    // If it's an object, convert to array and sort by hour
+    return Object.entries(hourlyDistribution)
+      .map(([hour, count]) => ({
+        hour: `${hour}:00`, // Format hour as "5:00", "6:00", etc.
+        count: parseInt(count) || 0
+      }))
+      .sort((a, b) => parseInt(a.hour) - parseInt(b.hour));
+  };
+
+  const hourlyDistributionData = transformHourlyDistribution(data.hourlyDistribution);
+
   return (
     <div className="space-y-6">
       {/* Transaction Volume Chart */}
@@ -81,9 +99,9 @@ const TransactionAnalysisTab = ({ data }) => {
       {/* Hourly Distribution */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Transaction Distribution by Hour</h3>
-        {data.hourlyDistribution && data.hourlyDistribution.length > 0 ? (
+        {hourlyDistributionData && hourlyDistributionData.length > 0 ? (
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={data.hourlyDistribution}>
+            <BarChart data={hourlyDistributionData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="hour" />
               <YAxis />

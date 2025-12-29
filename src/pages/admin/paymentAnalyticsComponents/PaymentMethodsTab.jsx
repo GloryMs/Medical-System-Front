@@ -24,6 +24,22 @@ const PaymentMethodsTab = ({ data }) => {
     }).format(amount || 0);
   };
 
+  // Transform revenueByMethod object to array format for chart
+  const transformRevenueByMethod = (revenueByMethod) => {
+    if (!revenueByMethod) return [];
+
+    // If it's already an array, return it
+    if (Array.isArray(revenueByMethod)) return revenueByMethod;
+
+    // If it's an object with nested structure, convert to array
+    return Object.entries(revenueByMethod).map(([method, data]) => ({
+      method: method,
+      revenue: parseFloat(data?.parsedValue || data?.source || data) || 0
+    }));
+  };
+
+  const revenueByMethodData = transformRevenueByMethod(data.revenueByMethod);
+
   return (
     <div className="space-y-6">
       {/* Payment Method Distribution */}
@@ -60,9 +76,9 @@ const PaymentMethodsTab = ({ data }) => {
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue by Method</h3>
-          {data.revenueByMethod && data.revenueByMethod.length > 0 ? (
+          {revenueByMethodData && revenueByMethodData.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={data.revenueByMethod}>
+              <BarChart data={revenueByMethodData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="method" />
                 <YAxis />

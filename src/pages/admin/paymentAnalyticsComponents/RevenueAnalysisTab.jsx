@@ -22,6 +22,22 @@ const RevenueAnalysisTab = ({ data }) => {
     }).format(amount || 0);
   };
 
+  // Transform revenueByType object to array format for chart
+  const transformRevenueByType = (revenueByType) => {
+    if (!revenueByType) return [];
+
+    // If it's already an array, return it
+    if (Array.isArray(revenueByType)) return revenueByType;
+
+    // If it's an object, convert to array
+    return Object.entries(revenueByType).map(([type, revenue]) => ({
+      type: type.charAt(0).toUpperCase() + type.slice(1), // Capitalize first letter
+      revenue: parseFloat(revenue) || 0
+    }));
+  };
+
+  const revenueByTypeData = transformRevenueByType(data.revenueByType);
+
   return (
     <div className="space-y-6">
       {/* Revenue Trend Chart */}
@@ -55,9 +71,9 @@ const RevenueAnalysisTab = ({ data }) => {
       <div className="grid grid-cols-2 gap-6">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue by Payment Type</h3>
-          {data.revenueByType && data.revenueByType.length > 0 ? (
+          {revenueByTypeData && revenueByTypeData.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={data.revenueByType}>
+              <BarChart data={revenueByTypeData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="type" />
                 <YAxis />
