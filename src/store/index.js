@@ -6,6 +6,7 @@ import appointmentReducer from './slices/appointmentSlice';
 import notificationReducer from './slices/notificationSlice';
 import paymentReducer from './slices/paymentSlice';
 import uiReducer from './slices/uiSlice';
+import supervisorReducer from './slices/supervisorSlice';
 
 export const store = configureStore({
   reducer: {
@@ -16,6 +17,7 @@ export const store = configureStore({
     notifications: notificationReducer,
     payments: paymentReducer,
     ui: uiReducer,
+    supervisor: supervisorReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

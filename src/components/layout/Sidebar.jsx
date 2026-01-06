@@ -1,14 +1,14 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  X, 
-  Home, 
-  FileText, 
-  Calendar, 
-  CreditCard, 
-  User, 
-  Settings, 
+import {
+  X,
+  Home,
+  FileText,
+  Calendar,
+  CreditCard,
+  User,
+  Settings,
   Bell,
   Users,
   UserCheck,
@@ -21,7 +21,9 @@ import {
   DollarSign,
   MessageSquare,
   Plus,
-  Settings2
+  Settings2,
+  Ticket,
+  UserCog
 } from 'lucide-react';
 
 import { CountBadge } from '../common/Badge';
@@ -79,7 +81,19 @@ const Sidebar = ({ open, onClose, userRole, userId }) => {
           { name: 'System Configuration', href: '/app/admin/configuration', icon: Settings },
           { name: 'Admin Settings', href: '/app/admin/settings', icon: Shield },
         ];
-      
+
+      case 'MEDICAL_SUPERVISOR':
+        return [
+          { name: 'Dashboard', href: '/app/supervisor/dashboard', icon: Home },
+          { name: 'My Patients', href: '/app/supervisor/patients', icon: Users },
+          { name: 'All Cases', href: '/app/supervisor/cases', icon: FileText },
+          { name: 'Appointments', href: '/app/supervisor/appointments', icon: Calendar },
+          { name: 'Coupons', href: '/app/supervisor/coupons', icon: Ticket },
+          { name: 'Messages', href: '/app/supervisor/communication', icon: MessageSquare },
+          { name: 'Profile', href: '/app/supervisor/profile', icon: User },
+          { name: 'Settings', href: '/app/supervisor/settings', icon: Settings },
+        ];
+
       default:
         return [];
     }
@@ -99,6 +113,8 @@ const Sidebar = ({ open, onClose, userRole, userId }) => {
         return 'text-green-600';
       case 'ADMIN':
         return 'text-purple-600';
+      case 'MEDICAL_SUPERVISOR':
+        return 'text-orange-600';
       default:
         return 'text-gray-600';
     }
@@ -112,6 +128,8 @@ const Sidebar = ({ open, onClose, userRole, userId }) => {
         return <Stethoscope className="w-5 h-5" />;
       case 'ADMIN':
         return <Shield className="w-5 h-5" />;
+      case 'MEDICAL_SUPERVISOR':
+        return <UserCog className="w-5 h-5" />;
       default:
         return <User className="w-5 h-5" />;
     }

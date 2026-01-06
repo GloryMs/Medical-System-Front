@@ -77,6 +77,21 @@ import AdminSettings from './pages/admin/AdminSettings';
 import CaseAnalytics from './pages/admin/Caseanalytics';
 import PaymentAnalytics from './pages/admin/PaymentAnalytics';
 
+// Supervisor Pages
+import SupervisorDashboard from './pages/supervisor/SupervisorDashboard';
+import SupervisorPatients from './pages/supervisor/SupervisorPatients';
+import CreatePatient from './pages/supervisor/CreatePatient';
+import PatientDetails from './pages/supervisor/PatientDetails';
+import SupervisorCases from './pages/supervisor/SupervisorCases';
+import SupervisorCaseDetails from './pages/supervisor/SupervisorCaseDetails';
+import CreateCaseForPatient from './pages/supervisor/CreateCaseForPatient';
+import SupervisorAppointments from './pages/supervisor/SupervisorAppointments';
+import CouponManagement from './pages/supervisor/CouponManagement';
+import PaymentOptions from './pages/supervisor/PaymentOptions';
+import SupervisorCommunication from './pages/supervisor/SupervisorCommunication';
+import SupervisorProfile from './pages/supervisor/SupervisorProfile';
+import SupervisorSettings from './pages/supervisor/SupervisorSettings';
+
 // Common Pages
 import NotFound from './pages/common/NotFound';
 import AccessDenied from './pages/common/AccessDenied';
@@ -118,7 +133,7 @@ const AppRoutes = () => {
 
   const getDefaultRoute = () => {
     if (!isAuthenticated) return '/';
-    
+
     switch (user?.role) {
       case 'PATIENT':
         return '/app/patient/dashboard';
@@ -126,6 +141,8 @@ const AppRoutes = () => {
         return '/app/doctor/dashboard';
       case 'ADMIN':
         return '/app/admin/dashboard';
+      case 'MEDICAL_SUPERVISOR':
+        return '/app/supervisor/dashboard';
       default:
         return '/';
     }
@@ -269,12 +286,34 @@ const AppRoutes = () => {
               </Routes>
             </ProtectedRoute>
           } />
+
+          {/* Supervisor Routes */}
+          <Route path="supervisor/*" element={
+            <ProtectedRoute requiredRole="MEDICAL_SUPERVISOR">
+              <Routes>
+                <Route path="dashboard" element={<SupervisorDashboard />} />
+                <Route path="patients" element={<SupervisorPatients />} />
+                <Route path="patients/create" element={<CreatePatient />} />
+                <Route path="patients/:patientId" element={<PatientDetails />} />
+                <Route path="patients/:patientId/cases/create" element={<CreateCaseForPatient />} />
+                <Route path="cases" element={<SupervisorCases />} />
+                <Route path="cases/:caseId" element={<SupervisorCaseDetails />} />
+                <Route path="appointments" element={<SupervisorAppointments />} />
+                <Route path="coupons" element={<CouponManagement />} />
+                <Route path="payment/:caseId" element={<PaymentOptions />} />
+                <Route path="communication" element={<SupervisorCommunication />} />
+                <Route path="profile" element={<SupervisorProfile />} />
+                <Route path="settings" element={<SupervisorSettings />} />
+              </Routes>
+            </ProtectedRoute>
+          } />
         </Route>
 
         {/* Legacy Routes for Direct Access (Redirect to /app) */}
         <Route path="/patient/*" element={<Navigate to="/app/patient" replace />} />
         <Route path="/doctor/*" element={<Navigate to="/app/doctor" replace />} />
         <Route path="/admin/*" element={<Navigate to="/app/admin" replace />} />
+        <Route path="/supervisor/*" element={<Navigate to="/app/supervisor" replace />} />
 
         {/* Error Pages */}
         <Route path="/access-denied" element={<AccessDenied />} />
