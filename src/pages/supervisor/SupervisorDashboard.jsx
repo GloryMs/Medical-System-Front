@@ -55,7 +55,7 @@ const SupervisorDashboard = () => {
   const loadRecentActivity = async () => {
     try {
       const response = await supervisorService.getRecentActivity(10);
-      setRecentActivity(response.data || []);
+      setRecentActivity(response || []);
     } catch (error) {
       console.error('Failed to load activity:', error);
     }

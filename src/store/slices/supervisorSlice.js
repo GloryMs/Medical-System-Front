@@ -31,7 +31,7 @@ export const fetchDashboardStatistics = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await supervisorService.getDashboardStatistics();
-      return response.data;
+      return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch dashboard statistics');
     }

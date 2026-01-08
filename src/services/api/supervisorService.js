@@ -243,7 +243,38 @@ const supervisorService = {
   // ==================== Payment & Coupons ====================
 
   /**
-   * Redeem coupon for case payment
+   * Pay consultation fee
+   * @param {Object} paymentData - Payment information
+   * @returns {Promise} Payment result
+   */
+  payConsultationFee: async (paymentData) => {
+    return api.post('/supervisor-service/api/supervisors/payments/pay', paymentData);
+  },
+
+  /**
+   * Create payment intent
+   * @param {number} caseId - Case ID
+   * @param {number} patientId - Patient ID
+   * @param {number} doctorId - Doctor ID
+   * @returns {Promise} Payment intent details
+   */
+  createPaymentIntent: async (caseId, patientId, doctorId) => {
+    return api.post(`/supervisor-service/api/supervisors/payments/create-payment-intent?caseId=${caseId}&patientId=${patientId}&doctorId=${doctorId}`);
+  },
+
+  /**
+   * Validate coupon
+   * @param {string} couponCode - Coupon code
+   * @param {number} patientId - Patient ID
+   * @param {number} caseId - Case ID
+   * @returns {Promise} Coupon validation result
+   */
+  validateCoupon: async (couponCode, patientId, caseId) => {
+    return api.post(`/supervisor-service/api/supervisors/payments/validate-coupon?couponCode=${couponCode}&patientId=${patientId}&caseId=${caseId}`);
+  },
+
+  /**
+   * Redeem coupon for case payment (Legacy)
    * @param {number} caseId - Case ID
    * @param {number} patientId - Patient ID
    * @param {string} couponCode - Coupon code
@@ -271,6 +302,23 @@ const supervisorService = {
    */
   getPatientCoupons: async (patientId) => {
     return api.get(`/supervisor-service/api/supervisors/payments/coupons/patient/${patientId}`);
+  },
+
+  /**
+   * Get all available coupons
+   * @returns {Promise} List of all available coupons
+   */
+  getAllAvailableCoupons: async () => {
+    return api.get('/supervisor-service/api/supervisors/payments/available-coupons');
+  },
+
+  /**
+   * Get expiring coupons
+   * @param {number} days - Days until expiry (default: 7)
+   * @returns {Promise} List of expiring coupons
+   */
+  getExpiringCoupons: async (days = 7) => {
+    return api.get(`/supervisor-service/api/supervisors/payments/coupons/expiring?days=${days}`);
   },
 
   /**
@@ -306,17 +354,31 @@ const supervisorService = {
 
   /**
    * Get appointments for supervisor's patients
-   * @param {Object} filters - Optional filters (patientId, status, date)
+   * @param {Object} filters - Optional filters (patientId, caseId, status, date, startDate, endDate, upcomingOnly, sortBy, sortOrder)
    * @returns {Promise} List of appointments
    */
   getAppointments: async (filters = {}) => {
     const params = new URLSearchParams();
     if (filters.patientId) params.append('patientId', filters.patientId);
+    if (filters.caseId) params.append('caseId', filters.caseId);
     if (filters.status) params.append('status', filters.status);
     if (filters.date) params.append('date', filters.date);
+    if (filters.startDate) params.append('startDate', filters.startDate);
+    if (filters.endDate) params.append('endDate', filters.endDate);
+    if (filters.upcomingOnly !== undefined) params.append('upcomingOnly', filters.upcomingOnly);
+    if (filters.sortBy) params.append('sortBy', filters.sortBy);
+    if (filters.sortOrder) params.append('sortOrder', filters.sortOrder);
 
     const queryString = params.toString();
     return api.get(`/supervisor-service/api/supervisors/appointments${queryString ? '?' + queryString : ''}`);
+  },
+
+  /**
+   * Get upcoming appointments
+   * @returns {Promise} List of upcoming appointments
+   */
+  getUpcomingAppointments: async () => {
+    return api.get('/supervisor-service/api/supervisors/appointments/upcoming');
   },
 
   /**
@@ -326,6 +388,86 @@ const supervisorService = {
    */
   getAppointmentDetails: async (appointmentId) => {
     return api.get(`/supervisor-service/api/supervisors/appointments/${appointmentId}`);
+  },
+
+  /**
+   * Get patient appointments
+   * @param {number} patientId - Patient ID
+   * @returns {Promise} List of patient appointments
+   */
+  getPatientAppointments: async (patientId) => {
+    return api.get(`/supervisor-service/api/supervisors/appointments/patient/${patientId}`);
+  },
+
+  /**
+   * Get case appointments
+   * @param {number} caseId - Case ID
+   * @returns {Promise} List of case appointments
+   */
+  getCaseAppointments: async (caseId) => {
+    return api.get(`/supervisor-service/api/supervisors/appointments/case/${caseId}`);
+  },
+
+  /**
+   * Accept appointment
+   * @param {Object} acceptData - { caseId, patientId, notes? }
+   * @returns {Promise} Accept confirmation
+   */
+  acceptAppointment: async (acceptData) => {
+    return api.post('/supervisor-service/api/supervisors/appointments/accept', acceptData);
+  },
+
+  /**
+   * Create reschedule request
+   * @param {Object} rescheduleData - { appointmentId, caseId, patientId, preferredTimes[], reason, additionalNotes? }
+   * @returns {Promise} Created reschedule request
+   */
+  createRescheduleRequest: async (rescheduleData) => {
+    return api.post('/supervisor-service/api/supervisors/appointments/reschedule-request', rescheduleData);
+  },
+
+  /**
+   * Get reschedule requests
+   * @param {number} patientId - Optional patient ID filter
+   * @returns {Promise} List of reschedule requests
+   */
+  getRescheduleRequests: async (patientId = null) => {
+    const params = patientId ? `?patientId=${patientId}` : '';
+    return api.get(`/supervisor-service/api/supervisors/appointments/reschedule-requests${params}`);
+  },
+
+  /**
+   * Get case reschedule requests
+   * @param {number} caseId - Case ID
+   * @returns {Promise} List of reschedule requests for the case
+   */
+  getCaseRescheduleRequests: async (caseId) => {
+    return api.get(`/supervisor-service/api/supervisors/appointments/case/${caseId}/reschedule-requests`);
+  },
+
+  /**
+   * Get appointment summary
+   * @returns {Promise} Appointment statistics
+   */
+  getAppointmentSummary: async () => {
+    return api.get('/supervisor-service/api/supervisors/appointments/summary');
+  },
+
+  /**
+   * Get today's appointments
+   * @returns {Promise} List of today's appointments
+   */
+  getTodayAppointments: async () => {
+    return api.get('/supervisor-service/api/supervisors/appointments/today');
+  },
+
+  /**
+   * Get appointments by status
+   * @param {string} status - Appointment status
+   * @returns {Promise} List of appointments with the specified status
+   */
+  getAppointmentsByStatus: async (status) => {
+    return api.get(`/supervisor-service/api/supervisors/appointments/status/${status}`);
   },
 
   // ==================== Communication ====================
@@ -353,7 +495,7 @@ const supervisorService = {
     formData.append('caseId', caseId);
 
     if (attachments && attachments.length > 0) {
-      attachments.forEach((file, index) => {
+      attachments.forEach((file) => {
         formData.append('attachments', file);
       });
     }
