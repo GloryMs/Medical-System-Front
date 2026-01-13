@@ -45,6 +45,7 @@ const Sidebar = ({ open, onClose, userRole, userId }) => {
           { name: 'Family Members', href: '/app/patient/dependents', icon: Users },
           { name: 'Appointments', href: '/app/patient/appointments', icon: Calendar },
           { name: 'Payments', href: '/app/patient/payments', icon: CreditCard },
+          { name: 'My Coupons', href: '/app/patient/coupons', icon: Ticket },
           { name: 'Notifications', href: '/app/patient/notifications', icon: Bell, badge: unreadCount },
           { name: 'communication', href: '/app/patient/communication', icon: MessageSquare },
           { name: 'Complaints', href: '/app/patient/complaints', icon: AlertTriangle },
@@ -75,11 +76,13 @@ const Sidebar = ({ open, onClose, userRole, userId }) => {
           { name: 'Doctor Verification', href: '/app/admin/doctors/verification', icon: UserCheck },
           { name: 'Case Management', href: '/app/admin/cases', icon: FileText },
           { name: 'Payment Management', href: '/app/admin/payments', icon: CreditCard },
+          { name: 'Coupons Management', href: '/app/admin/coupons', icon: Ticket},
           { name: 'Complaint Management', href: '/app/admin/complaints', icon: AlertTriangle },
           { name: 'System Reports', href: '/app/admin/reports', icon: BarChart3 },
           { name: 'Medical Configuration', href: '/app/admin/medical-config', icon: Database },
           { name: 'System Configuration', href: '/app/admin/configuration', icon: Settings },
           { name: 'Admin Settings', href: '/app/admin/settings', icon: Shield },
+          
         ];
 
       case 'MEDICAL_SUPERVISOR':
@@ -102,7 +105,13 @@ const Sidebar = ({ open, onClose, userRole, userId }) => {
   const navigationItems = getNavigationItems();
 
   const isActiveLink = (href) => {
-    return location.pathname === href || location.pathname.startsWith(href.replace('/app/', '/'));
+    // Early return if href is missing/falsy
+    if (!href) return false;
+
+    return (
+      location.pathname === href ||
+      location.pathname.startsWith(href.replace('/app/', '/'))
+    );
   };
 
   const getRoleColor = () => {

@@ -45,6 +45,7 @@ import PatientSettings from './pages/patient/PatientSettings';
 import EditCase from './pages/patient/EditCase';
 import CreateCase from './pages/patient/CreateCase';
 import DependentsManagement from './pages/patient/DependentsManagement';
+import PatientCoupons from './pages/patient/PatientCoupons';
 
 // Doctor Pages
 import DoctorDashboard from './pages/doctor/DoctorDashboard';
@@ -76,6 +77,8 @@ import MedicalConfiguration from './pages/admin/MedicalConfiguration';
 import AdminSettings from './pages/admin/AdminSettings';
 import CaseAnalytics from './pages/admin/Caseanalytics';
 import PaymentAnalytics from './pages/admin/PaymentAnalytics';
+import AdminCouponManagement from './pages/admin/AdminCouponManagement';
+import CouponBatchDetails from './pages/admin/CouponBatchDetails';
 
 // Supervisor Pages
 import SupervisorDashboard from './pages/supervisor/SupervisorDashboard';
@@ -91,6 +94,7 @@ import PaymentOptions from './pages/supervisor/PaymentOptions';
 import SupervisorCommunication from './pages/supervisor/SupervisorCommunication';
 import SupervisorProfile from './pages/supervisor/SupervisorProfile';
 import SupervisorSettings from './pages/supervisor/SupervisorSettings';
+import SupervisorCouponManagement from './pages/supervisor/SupervisorCouponManagement';
 
 // Common Pages
 import NotFound from './pages/common/NotFound';
@@ -239,7 +243,8 @@ const AppRoutes = () => {
                   } 
                 />
                 <Route path="settings" element={<PatientSettings />} /> 
-                <Route path="communication" element={<DoctorCommunication />} />           
+                <Route path="communication" element={<DoctorCommunication />} /> 
+                <Route path="coupons" element={<PatientCoupons />} />          
               </Routes>
             </ProtectedRoute>
           } />
@@ -283,6 +288,8 @@ const AppRoutes = () => {
                 <Route path="settings" element={<AdminSettings />} />
                 <Route path="cases/analytics" element={<CaseAnalytics />} />
                 <Route path="payment-analytics" element={<PaymentAnalytics />} />
+                <Route path="coupons" element={<AdminCouponManagement />} />
+                <Route path="coupons/batches/:batchId" element={<CouponBatchDetails />} />
               </Routes>
             </ProtectedRoute>
           } />
@@ -299,11 +306,11 @@ const AppRoutes = () => {
                 <Route path="cases" element={<SupervisorCases />} />
                 <Route path="cases/:caseId" element={<SupervisorCaseDetails />} />
                 <Route path="appointments" element={<SupervisorAppointments />} />
-                <Route path="coupons" element={<CouponManagement />} />
                 <Route path="payment/:caseId" element={<PaymentOptions />} />
                 <Route path="communication" element={<SupervisorCommunication />} />
                 <Route path="profile" element={<SupervisorProfile />} />
                 <Route path="settings" element={<SupervisorSettings />} />
+                <Route path="coupons" element={<SupervisorCouponManagement />} />
               </Routes>
             </ProtectedRoute>
           } />
