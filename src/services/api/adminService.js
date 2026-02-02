@@ -549,6 +549,92 @@ const adminService = {
   testWebhook: async (webhookId) => {
     return await api.post(`/admin-service/api/admin/webhooks/${webhookId}/test`);
   },
+
+  // ==================== Supervisor Management ====================
+
+  /**
+   * Get all supervisors with optional status filter
+   * @param {string} status - Optional status filter (PENDING, VERIFIED, REJECTED, SUSPENDED)
+   * @returns {Promise} List of supervisors
+   */
+  getAllSupervisors: async (status = null) => {
+    const params = status ? `?status=${status}` : '';
+    return await api.get(`/admin-service/api/admin/supervisors${params}`);
+  },
+
+  /**
+   * Get pending supervisors awaiting verification
+   * @returns {Promise} List of pending supervisors
+   */
+  getPendingSupervisors: async () => {
+    return await api.get('/admin-service/api/admin/supervisors/pending');
+  },
+
+  /**
+   * Get supervisor by ID
+   * @param {number} supervisorId - Supervisor ID
+   * @returns {Promise} Supervisor details
+   */
+  getSupervisorById: async (supervisorId) => {
+    return await api.get(`/admin-service/api/admin/supervisors/${supervisorId}`);
+  },
+
+  /**
+   * Verify supervisor
+   * @param {number} supervisorId - Supervisor ID to verify
+   * @param {Object} verificationData - { verificationNotes?: string }
+   * @returns {Promise} Verified supervisor details
+   */
+  verifySupervisor: async (supervisorId, verificationData = {}) => {
+    return await api.put(`/admin-service/api/admin/supervisors/${supervisorId}/verify`, verificationData);
+  },
+
+  /**
+   * Reject supervisor
+   * @param {number} supervisorId - Supervisor ID to reject
+   * @param {string} rejectionReason - Reason for rejection
+   * @returns {Promise} Rejected supervisor details
+   */
+  rejectSupervisor: async (supervisorId, rejectionReason) => {
+    return await api.put(`/admin-service/api/admin/supervisors/${supervisorId}/reject`, { rejectionReason });
+  },
+
+  /**
+   * Suspend supervisor
+   * @param {number} supervisorId - Supervisor ID to suspend
+   * @param {string} reason - Reason for suspension
+   * @returns {Promise} Suspended supervisor details
+   */
+  suspendSupervisor: async (supervisorId, reason) => {
+    return await api.put(`/admin-service/api/admin/supervisors/${supervisorId}/suspend?reason=${encodeURIComponent(reason)}`);
+  },
+
+  /**
+   * Update supervisor limits
+   * @param {number} supervisorId - Supervisor ID
+   * @param {Object} limits - { maxPatientsLimit: number, maxActiveCasesPerPatient: number }
+   * @returns {Promise} Updated supervisor details
+   */
+  updateSupervisorLimits: async (supervisorId, limits) => {
+    return await api.put(`/admin-service/api/admin/supervisors/${supervisorId}/limits`, limits);
+  },
+
+  /**
+   * Search supervisors
+   * @param {string} query - Search query (name, email, organization, license number)
+   * @returns {Promise} List of matching supervisors
+   */
+  searchSupervisors: async (query) => {
+    return await api.get(`/admin-service/api/admin/supervisors/search?query=${encodeURIComponent(query)}`);
+  },
+
+  /**
+   * Get supervisor statistics
+   * @returns {Promise} Comprehensive supervisor statistics
+   */
+  getSupervisorStatistics: async () => {
+    return await api.get('/admin-service/api/admin/supervisors/statistics');
+  },
 };
 
 export default adminService;

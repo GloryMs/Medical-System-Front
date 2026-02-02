@@ -124,7 +124,7 @@ const SupervisorCouponManagement = () => {
   const loadCoupons = async () => {
     try {
       const response = await execute(() => supervisorCouponService.getAllCoupons());
-      setCoupons(response?.data || []);
+      setCoupons(response || []);
     } catch (error) {
       console.error('Error loading coupons:', error);
     }
@@ -133,7 +133,7 @@ const SupervisorCouponManagement = () => {
   const loadSummary = async () => {
     try {
       const response = await execute(() => supervisorCouponService.getCouponSummary());
-      setSummary(response?.data || {});
+      setSummary(response || {});
     } catch (error) {
       console.error('Error loading summary:', error);
     }
@@ -142,7 +142,7 @@ const SupervisorCouponManagement = () => {
   const loadPatients = async () => {
     try {
       const response = await execute(() => supervisorService.getPatients());
-      setPatients(response?.data || []);
+      setPatients(response || []);
     } catch (error) {
       console.error('Error loading patients:', error);
     }
@@ -543,10 +543,10 @@ const SupervisorCouponManagement = () => {
                           />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {coupon.patientName ? (
+                          {coupon.assignedPatientName ? (
                             <div className="flex items-center">
                               <User className="w-4 h-4 text-gray-400 mr-2" />
-                              <span className="text-sm text-gray-900">{coupon.patientName}</span>
+                              <span className="text-sm text-gray-900">{coupon.assignedPatientName}</span>
                             </div>
                           ) : (
                             <span className="text-sm text-gray-400 italic">Unassigned</span>
@@ -634,7 +634,7 @@ const SupervisorCouponManagement = () => {
             >
               <option value="">Select a patient...</option>
               {patients.map(p => (
-                <option key={p.id} value={p.patientId}>{p.fullName || p.patientName} ({p.email})</option>
+                <option key={p.id} value={p.patientId}>{p.fullName || p.patientName} ({p.patientEmail})</option>
               ))}
             </select>
           </div>
@@ -713,7 +713,7 @@ const SupervisorCouponManagement = () => {
               <div className="p-3 bg-gray-50 rounded-lg">
                 <p className="text-xs text-gray-500 uppercase tracking-wider">Assigned To</p>
                 <p className="text-sm text-gray-900 mt-1">
-                  {selectedCoupon.patientName || <span className="text-gray-400 italic">Unassigned</span>}
+                  {selectedCoupon.assignedPatientName || <span className="text-gray-400 italic">Unassigned</span>}
                 </p>
               </div>
               <div className="p-3 bg-gray-50 rounded-lg">

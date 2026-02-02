@@ -72,9 +72,10 @@ import { useAuth } from './useAuth';
 import patientService from '../services/api/patientService';
 import doctorService from '../services/api/doctorService';
 import adminService from '../services/api/adminService';
+import supervisorService from '../services/api/supervisorService';
 
 // Constants
-const AUTO_REFRESH_INTERVAL = 10000; // 10 seconds
+const AUTO_REFRESH_INTERVAL = 15000; // 15 seconds
 const MAX_NOTIFICATIONS_IN_MEMORY = 50;
 
 export const useNotifications = (autoRefresh = true, refreshInterval = AUTO_REFRESH_INTERVAL) => {
@@ -109,6 +110,8 @@ export const useNotifications = (autoRefresh = true, refreshInterval = AUTO_REFR
         return doctorService;
       case 'ADMIN':
         return adminService;
+      case 'MEDICAL_SUPERVISOR':
+        return supervisorService;
       default:
         return null;
     }

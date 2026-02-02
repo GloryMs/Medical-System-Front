@@ -51,7 +51,6 @@ import Card, { StatsCard, AlertCard } from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Badge, { StatusBadge } from '../../components/common/Badge';
 import Modal, { ConfirmModal, FormModal } from '../../components/common/Modal';
-import DataTable from '../../components/common/DataTable';
 import { useAuth } from '../../hooks/useAuth';
 import { useApi } from '../../hooks/useApi';
 import { useUI } from '../../hooks/useUI';
@@ -80,16 +79,22 @@ const CaseManagement = () => {
 
   // State management
   const [cases, setCases] = useState([]);
-  const [filteredCases, setFilteredCases] = useState([]);
   const [selectedCase, setSelectedCase] = useState(null);
   const [availableDoctors, setAvailableDoctors] = useState([]);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showReassignModal, setShowReassignModal] = useState(false);
   const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
-  
+
+  // Pagination state (server-side)
+  const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+
   // Filters and search
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [urgencyFilter, setUrgencyFilter] = useState('all');
   const [specializationFilter, setSpecializationFilter] = useState('all');
@@ -112,10 +117,19 @@ const CaseManagement = () => {
   const [selectedCases, setSelectedCases] = useState([]);
   const [showBulkActions, setShowBulkActions] = useState(false);
 
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setCurrentPage(0); // Reset to first page on search
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
   // Toggle case selection
   const toggleCaseSelection = (caseId) => {
-    setSelectedCases(prev => 
-      prev.includes(caseId) 
+    setSelectedCases(prev =>
+      prev.includes(caseId)
         ? prev.filter(id => id !== caseId)
         : [...prev, caseId]
     );
@@ -123,17 +137,17 @@ const CaseManagement = () => {
 
   // Select all cases
   const toggleSelectAll = () => {
-    if (selectedCases.length === filteredCases.length) {
+    if (selectedCases.length === cases.length) {
       setSelectedCases([]);
     } else {
-      setSelectedCases(filteredCases.map(c => c.id));
+      setSelectedCases(cases.map(c => c.id));
     }
   };
 
   // Export cases data
   const handleExportCases = async () => {
     try {
-      const dataToExport = filteredCases.map(caseItem => ({
+      const dataToExport = cases.map(caseItem => ({
         'Case ID': caseItem.id,
         'Patient ID': caseItem.patientId,
         'Case Title': caseItem.caseTitle,
@@ -198,68 +212,104 @@ const CaseManagement = () => {
     resolver: yupResolver(reassignmentSchema)
   });
 
-  // // Load data
-  // const loadCases = async () => {
-  //   try {
-  //     const response = await execute(() => adminService.getAllCases());
-  //     if (response?.data) {
-  //       setCases(response.data);
-  //       setFilteredCases(response.data);
-  //       calculateStats(response.data);
-  //     }
-  //     else{
-  //       showToast('No data found', 'error');
-  //      }
-  //     }
-  //   catch (error) {
-  //     showToast('Failed to load cases', 'error');
-  //   }
-  // };
-
-
-  // Load data
+  // Load data with server-side pagination
   const loadCases = async () => {
     try {
-      const response = await execute(() => adminService.getAllCases());
-      
+      // Build filter parameters for API
+      const filters = {
+        page: currentPage,
+        size: pageSize,
+        sort: `${sortBy},${sortOrder}`
+      };
+
+      // Add search term if present
+      if (debouncedSearch) {
+        filters.search = debouncedSearch;
+      }
+
+      // Add status filter
+      if (statusFilter !== 'all') {
+        filters.status = statusFilter;
+      }
+
+      // Add urgency filter
+      if (urgencyFilter !== 'all') {
+        filters.urgencyLevel = urgencyFilter;
+      }
+
+      // Add specialization filter
+      if (specializationFilter !== 'all') {
+        filters.specialization = specializationFilter;
+      }
+
+      // Add date range filter
+      if (dateRangeFilter !== 'all') {
+        const now = new Date();
+        let startDate;
+
+        switch (dateRangeFilter) {
+          case 'today':
+            startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            break;
+          case 'week':
+            startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            break;
+          case 'month':
+            startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+            break;
+          default:
+            startDate = null;
+        }
+
+        if (startDate) {
+          filters.startDate = startDate.toISOString();
+        }
+      }
+
+      console.log('Loading cases with filters:', filters);
+
+      const response = await execute(() => adminService.getAllCases(filters));
+
       console.log('Full response:', response);
-      
+
       if (response) {
         // Check if response is paginated (Spring Page object)
         if (response.content && Array.isArray(response.content)) {
-          // Paginated response from Spring Data
           console.log('Handling paginated response');
-          const casesArray = response.content;
-          setCases(casesArray);
-          setFilteredCases(casesArray);
-          calculateStats(casesArray);
-        } 
-        // Check if response is a simple array
+          setCases(response.content);
+          setTotalElements(response.totalElements || 0);
+          setTotalPages(response.totalPages || 0);
+          // Calculate stats from the full count, not just current page
+          calculateStats(response.content, response.totalElements);
+        }
+        // Check if response is a simple array (fallback)
         else if (Array.isArray(response)) {
           console.log('Handling array response');
           setCases(response);
-          setFilteredCases(response);
-          calculateStats(response);
+          setTotalElements(response.length);
+          setTotalPages(Math.ceil(response.length / pageSize));
+          calculateStats(response, response.length);
         }
         // Handle empty response
         else {
           console.warn('Unexpected response format:', response);
           setCases([]);
-          setFilteredCases([]);
-          calculateStats([]);
-          showToast('No cases found', 'info');
+          setTotalElements(0);
+          setTotalPages(0);
+          calculateStats([], 0);
         }
       } else {
         console.warn('No data in response');
         setCases([]);
-        setFilteredCases([]);
-        showToast('No cases found', 'info');
+        setTotalElements(0);
+        setTotalPages(0);
       }
     } catch (error) {
       console.error('Error loading cases:', error);
       showToast('Failed to load cases', 'error');
       setCases([]);
-      setFilteredCases([]);
+      setTotalElements(0);
+      setTotalPages(0);
     }
   };
 
@@ -285,22 +335,27 @@ const CaseManagement = () => {
     }
   };
 
+  // Load data on mount
   useEffect(() => {
-    loadCases();
     loadDoctors();
     loadCaseMetrics();
   }, []);
 
+  // Load cases when pagination or filters change
+  useEffect(() => {
+    loadCases();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, pageSize, debouncedSearch, statusFilter, urgencyFilter, specializationFilter, dateRangeFilter, sortBy, sortOrder]);
+
   // Calculate statistics
-  const calculateStats = (casesData) => {
-    const total = casesData.length;
+  const calculateStats = (casesData, total = null) => {
     const statusCounts = casesData.reduce((acc, caseItem) => {
       acc[caseItem.status] = (acc[caseItem.status] || 0) + 1;
       return acc;
     }, {});
 
     setStats({
-      total,
+      total: total !== null ? total : casesData.length,
       pending: statusCounts.PENDING || 0,
       assigned: statusCounts.ASSIGNED || 0,
       inProgress: statusCounts.IN_PROGRESS || 0,
@@ -309,76 +364,16 @@ const CaseManagement = () => {
     });
   };
 
-  // Filter and search logic
-  useEffect(() => {
-    let filtered = [...cases];
+  // Handle page change
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage);
+  };
 
-    // Apply search
-    if (searchTerm) {
-      filtered = filtered.filter(caseItem =>
-        caseItem.caseTitle?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        caseItem.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        caseItem.patientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        caseItem.id?.toString().includes(searchTerm)
-      );
-    }
-
-    // Apply filters
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(caseItem => caseItem.status === statusFilter);
-    }
-
-    if (urgencyFilter !== 'all') {
-      filtered = filtered.filter(caseItem => caseItem.urgencyLevel === urgencyFilter);
-    }
-
-    if (specializationFilter !== 'all') {
-      filtered = filtered.filter(caseItem => caseItem.specialization === specializationFilter);
-    }
-
-    // Apply date filter
-    if (dateRangeFilter !== 'all') {
-      const now = new Date();
-      let startDate;
-      
-      switch (dateRangeFilter) {
-        case 'today':
-          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-          break;
-        case 'week':
-          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          break;
-        case 'month':
-          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-          break;
-        default:
-          startDate = null;
-      }
-      
-      if (startDate) {
-        filtered = filtered.filter(caseItem => new Date(caseItem.createdAt) >= startDate);
-      }
-    }
-
-    // Apply sorting
-    filtered.sort((a, b) => {
-      let aValue = a[sortBy];
-      let bValue = b[sortBy];
-      
-      if (sortBy === 'createdAt' || sortBy === 'updatedAt') {
-        aValue = new Date(aValue);
-        bValue = new Date(bValue);
-      }
-      
-      if (sortOrder === 'asc') {
-        return aValue > bValue ? 1 : -1;
-      } else {
-        return aValue < bValue ? 1 : -1;
-      }
-    });
-
-    setFilteredCases(filtered);
-  }, [cases, searchTerm, statusFilter, urgencyFilter, specializationFilter, dateRangeFilter, sortBy, sortOrder]);
+  // Handle page size change
+  const handlePageSizeChange = (newSize) => {
+    setPageSize(newSize);
+    setCurrentPage(0);
+  };
 
   // Handle case assignment
   const handleAssignCase = async (data) => {
@@ -700,7 +695,7 @@ const CaseManagement = () => {
             <div className="flex items-center space-x-3">
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(0); }}
                 className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               >
                 <option value="all">All Status</option>
@@ -711,7 +706,7 @@ const CaseManagement = () => {
 
               <select
                 value={urgencyFilter}
-                onChange={(e) => setUrgencyFilter(e.target.value)}
+                onChange={(e) => { setUrgencyFilter(e.target.value); setCurrentPage(0); }}
                 className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               >
                 <option value="all">All Urgency</option>
@@ -739,7 +734,7 @@ const CaseManagement = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
                   <select
                     value={dateRangeFilter}
-                    onChange={(e) => setDateRangeFilter(e.target.value)}
+                    onChange={(e) => { setDateRangeFilter(e.target.value); setCurrentPage(0); }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   >
                     <option value="all">All Time</option>
@@ -748,12 +743,12 @@ const CaseManagement = () => {
                     <option value="month">Last Month</option>
                   </select>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
                   <select
                     value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
+                    onChange={(e) => { setSortBy(e.target.value); setCurrentPage(0); }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   >
                     <option value="createdAt">Created Date</option>
@@ -762,12 +757,12 @@ const CaseManagement = () => {
                     <option value="status">Status</option>
                   </select>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Order</label>
                   <select
                     value={sortOrder}
-                    onChange={(e) => setSortOrder(e.target.value)}
+                    onChange={(e) => { setSortOrder(e.target.value); setCurrentPage(0); }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   >
                     <option value="desc">Newest First</option>
@@ -780,13 +775,159 @@ const CaseManagement = () => {
         </div>
 
         {/* Cases Table */}
-        <DataTable
-          data={filteredCases}
-          columns={columns}
-          loading={loading}
-          emptyMessage="No cases found"
-          className="border-0"
-        />
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                {columns.map((column) => (
+                  <th
+                    key={column.key}
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    {column.title}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {loading ? (
+                // Loading skeleton
+                Array.from({ length: pageSize }).map((_, index) => (
+                  <tr key={`skeleton-${index}`}>
+                    {columns.map((col) => (
+                      <td key={col.key} className="px-6 py-4 whitespace-nowrap">
+                        <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              ) : cases.length === 0 ? (
+                <tr>
+                  <td colSpan={columns.length} className="px-6 py-12 text-center text-gray-500">
+                    <FileText className="w-12 h-12 mx-auto text-gray-300 mb-4" />
+                    <p className="text-lg font-medium">No cases found</p>
+                    <p className="text-sm">Try adjusting your search or filter criteria</p>
+                  </td>
+                </tr>
+              ) : (
+                cases.map((caseItem) => (
+                  <tr key={caseItem.id} className="hover:bg-gray-50 transition-colors">
+                    {columns.map((column) => (
+                      <td key={column.key} className="px-6 py-4 whitespace-nowrap">
+                        {column.render ? column.render(caseItem) : caseItem[column.key]}
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        {totalElements > 0 && (
+          <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              {/* Pagination info and page size selector */}
+              <div className="flex items-center gap-4">
+                <span className="text-sm text-gray-700">
+                  Showing{' '}
+                  <span className="font-medium">{currentPage * pageSize + 1}</span>
+                  {' '}to{' '}
+                  <span className="font-medium">
+                    {Math.min((currentPage + 1) * pageSize, totalElements)}
+                  </span>
+                  {' '}of{' '}
+                  <span className="font-medium">{totalElements}</span>
+                  {' '}results
+                </span>
+
+                <div className="flex items-center gap-2">
+                  <label className="text-sm text-gray-600">Per page:</label>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                    className="px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  >
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Page navigation */}
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(0)}
+                  disabled={currentPage === 0}
+                >
+                  First
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 0}
+                >
+                  Previous
+                </Button>
+
+                {/* Page numbers */}
+                <div className="flex items-center gap-1">
+                  {(() => {
+                    const pages = [];
+                    const maxVisiblePages = 5;
+                    let startPage = Math.max(0, currentPage - Math.floor(maxVisiblePages / 2));
+                    let endPage = Math.min(totalPages - 1, startPage + maxVisiblePages - 1);
+
+                    if (endPage - startPage < maxVisiblePages - 1) {
+                      startPage = Math.max(0, endPage - maxVisiblePages + 1);
+                    }
+
+                    for (let i = startPage; i <= endPage; i++) {
+                      pages.push(
+                        <button
+                          key={i}
+                          onClick={() => handlePageChange(i)}
+                          className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                            currentPage === i
+                              ? 'bg-primary-600 text-white'
+                              : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          {i + 1}
+                        </button>
+                      );
+                    }
+                    return pages;
+                  })()}
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage >= totalPages - 1}
+                >
+                  Next
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(totalPages - 1)}
+                  disabled={currentPage >= totalPages - 1}
+                >
+                  Last
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </Card>
 
 
@@ -1191,7 +1332,7 @@ const CaseManagement = () => {
       </FormModal>
 
       {/* Empty State */}
-      {filteredCases.length === 0 && !loading && (
+      {cases.length === 0 && !loading && totalElements === 0 && (
         <AlertCard
           type="info"
           icon={<Info className="w-5 h-5" />}
@@ -1207,6 +1348,7 @@ const CaseManagement = () => {
                 setUrgencyFilter('all');
                 setSpecializationFilter('all');
                 setDateRangeFilter('all');
+                setCurrentPage(0);
               }}
             >
               Clear Filters

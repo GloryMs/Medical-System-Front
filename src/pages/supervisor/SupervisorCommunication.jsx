@@ -1,22 +1,28 @@
 import React from 'react';
-import { MessageSquare } from 'lucide-react';
-import Card from '../../components/common/Card';
+import CommunicationPage from '../communication/components/CommunicationPage';
 
+/**
+ * SupervisorCommunication Component
+ *
+ * IMPORTANT: Medical supervisors act on behalf of patients.
+ * They should see conversations from the PATIENT'S perspective:
+ *
+ * Expected conversation display:
+ * - Title/otherUserName: Doctor's name (who the patient is communicating with)
+ * - Latest message preview
+ * - Case number
+ * - Unread count
+ *
+ * The backend messaging-service should automatically determine this perspective
+ * based on the user's role (MEDICAL_SUPERVISOR) from the JWT token and return:
+ * - otherUserName = doctor's name
+ * - otherUserId = doctor's ID
+ *
+ * If supervisors are seeing patient names instead of doctor names,
+ * the backend needs to be updated to handle MEDICAL_SUPERVISOR role correctly.
+ */
 const SupervisorCommunication = () => {
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Messages</h1>
-        <p className="mt-1 text-sm text-gray-600">Communicate with doctors about patient cases</p>
-      </div>
-
-      <Card className="text-center py-12">
-        <MessageSquare className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 mb-2">Communication Center</h3>
-        <p className="text-gray-600">Messaging features are under development.</p>
-      </Card>
-    </div>
-  );
+  return <CommunicationPage />;
 };
 
 export default SupervisorCommunication;

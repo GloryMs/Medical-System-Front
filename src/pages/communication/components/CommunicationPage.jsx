@@ -116,9 +116,9 @@ const CommunicationPage = () => {
   const handleSelectConversation = (conversation) => {
     console.log('Conversation selected:', conversation);
     setSelectedConversation(conversation);
-    
+
     if (conversation.unreadCount > 0 && conversation.id) {
-      messageService.markConversationAsRead(conversation.id)
+      messageService.markConversationAsRead(conversation.id, user.id, user.role)
         .then(() => {
           setConversations(prev =>
             prev.map(conv =>

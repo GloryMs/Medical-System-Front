@@ -1473,7 +1473,7 @@ const renderListView = () => {
             <div className="bg-gray-50 p-4 rounded-lg">
               <h4 className="font-medium text-gray-900 mb-2">Appointment Details</h4>
               <div className="space-y-1 text-sm text-gray-600">
-                <p><strong>Patient:</strong> {selectedAppointment.doctor?.fullName || 'N/A'}</p>
+                <p><strong>Patient:</strong> {selectedAppointment?.patientName || 'N/A'}</p>
                 <p><strong>Date:</strong> {formatDateTime(selectedAppointment.scheduledTime)}</p>
                 <p><strong>Type:</strong> {CONSULTATION_TYPE[selectedAppointment.consultationType] || selectedAppointment.consultationType}</p>
               </div>
@@ -1536,7 +1536,7 @@ const renderListView = () => {
             <div className="bg-gray-50 p-4 rounded-lg">
               <h4 className="font-medium text-gray-900 mb-2">Appointment Details</h4>
               <div className="space-y-1 text-sm text-gray-600">
-                <p><strong>Patient:</strong> {selectedAppointment.doctor?.fullName || 'N/A'}</p>
+                <p><strong>Patient:</strong> {selectedAppointment?.patientName || 'N/A'}</p>
                 <p><strong>Date:</strong> {formatDateTime(selectedAppointment.scheduledTime)}</p>
                 <p><strong>Duration:</strong> {selectedAppointment.duration || 30} minutes</p>
                 <p><strong>Type:</strong> {CONSULTATION_TYPE[selectedAppointment.consultationType] || selectedAppointment.consultationType}</p>
@@ -1620,7 +1620,7 @@ const renderListView = () => {
                 <div className="flex justify-between">
                   <span className="text-gray-600">Name:</span>
                   <span className="font-medium text-gray-900">
-                    {selectedAppointment.doctor?.fullName || 'N/A'}
+                    {selectedAppointment?.patientName || 'N/A'}
                   </span>
                 </div>
                 {selectedAppointment.patientId && (

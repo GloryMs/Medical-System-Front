@@ -919,7 +919,7 @@ const PaymentManagement = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <div>
-                        <div>{formatDate(payment.createdAt)}</div>
+                        <div>{formatDate(payment.processedAt)}</div>
                         {payment.refundedAt && (
                           <div className="text-red-600">
                             Refunded: {formatDate(payment.refundedAt)}

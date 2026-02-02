@@ -65,9 +65,10 @@ import ViewReport from './pages/doctor/ViewReport';
 import EditReport from './pages/doctor/EditReport';
 
 // Admin Pages
-import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminDashboard from './pages/admin/NewAdminDashboard';
 import UserManagement from './pages/admin/UserManagement';
 import DoctorVerification from './pages/admin/DoctorVerification';
+import SupervisorsManagement from './pages/admin/SupervisorsManagement';
 import CaseManagement from './pages/admin/CaseManagement';
 import PaymentManagement from './pages/admin/PaymentManagement';
 import ComplaintManagement from './pages/admin/ComplaintManagement';
@@ -79,6 +80,7 @@ import CaseAnalytics from './pages/admin/Caseanalytics';
 import PaymentAnalytics from './pages/admin/PaymentAnalytics';
 import AdminCouponManagement from './pages/admin/AdminCouponManagement';
 import CouponBatchDetails from './pages/admin/CouponBatchDetails';
+import AdminNotifications from './pages/admin/AdminNotifications';
 
 // Supervisor Pages
 import SupervisorDashboard from './pages/supervisor/SupervisorDashboard';
@@ -95,6 +97,9 @@ import SupervisorCommunication from './pages/supervisor/SupervisorCommunication'
 import SupervisorProfile from './pages/supervisor/SupervisorProfile';
 import SupervisorSettings from './pages/supervisor/SupervisorSettings';
 import SupervisorCouponManagement from './pages/supervisor/SupervisorCouponManagement';
+import SupervisorNotifications from './pages/supervisor/SupervisorNotifications';
+import SupervisorComplaints from './pages/supervisor/SupervisorComplaints';
+import SupervisorPayments from './pages/supervisor/SupervisorPayments';
 
 // Common Pages
 import NotFound from './pages/common/NotFound';
@@ -279,6 +284,7 @@ const AppRoutes = () => {
                 <Route path="dashboard" element={<AdminDashboard />} />
                 <Route path="users" element={<UserManagement />} />
                 <Route path="doctors/verification" element={<DoctorVerification />} />
+                <Route path="supervisors" element={<SupervisorsManagement />} />
                 <Route path="cases" element={<CaseManagement />} />
                 <Route path="payments" element={<PaymentManagement />} />
                 <Route path="complaints" element={<ComplaintManagement />} />
@@ -290,6 +296,7 @@ const AppRoutes = () => {
                 <Route path="payment-analytics" element={<PaymentAnalytics />} />
                 <Route path="coupons" element={<AdminCouponManagement />} />
                 <Route path="coupons/batches/:batchId" element={<CouponBatchDetails />} />
+                <Route path="notifications" element={<AdminNotifications />} />
               </Routes>
             </ProtectedRoute>
           } />
@@ -308,9 +315,12 @@ const AppRoutes = () => {
                 <Route path="appointments" element={<SupervisorAppointments />} />
                 <Route path="payment/:caseId" element={<PaymentOptions />} />
                 <Route path="communication" element={<SupervisorCommunication />} />
+                <Route path="payments" element={<SupervisorPayments />} />
                 <Route path="profile" element={<SupervisorProfile />} />
                 <Route path="settings" element={<SupervisorSettings />} />
                 <Route path="coupons" element={<SupervisorCouponManagement />} />
+                <Route path="notifications" element={<SupervisorNotifications />} />
+                <Route path="complaints" element={<SupervisorComplaints />} />
               </Routes>
             </ProtectedRoute>
           } />

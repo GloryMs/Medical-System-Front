@@ -41,7 +41,7 @@ import Badge, { StatusBadge } from '../../components/common/Badge';
 import Modal, { ConfirmModal, FormModal } from '../../components/common/Modal';
 import { useAuth } from '../../hooks/useAuth';
 import { useApi } from '../../hooks/useApi';
-import { useSocket } from '../../hooks/useSocket';
+//import { useSocket } from '../../hooks/useSocket';
 import patientService from '../../services/api/patientService';
 
 // Validation schemas
@@ -59,7 +59,7 @@ const ComplaintDetails = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { execute, loading } = useApi();
-  const socket = useSocket();
+  //const socket = useSocket();
   const messagesEndRef = useRef(null);
 
   // State management
@@ -90,32 +90,32 @@ const ComplaintDetails = () => {
   });
 
   // Load data and setup socket listeners
-  useEffect(() => {
-    if (complaintId) {
-      loadComplaintDetails();
-      loadMessages();
+  // useEffect(() => {
+  //   if (complaintId) {
+  //     loadComplaintDetails();
+  //     loadMessages();
       
-      // Socket event listeners
-      if (socket) {
-        socket.emit('join_complaint_room', complaintId);
+  //     // Socket event listeners
+  //     // if (socket) {
+  //     //   socket.emit('join_complaint_room', complaintId);
         
-        socket.on('new_message', handleNewMessage);
-        socket.on('message_status_update', handleMessageStatusUpdate);
-        socket.on('agent_typing', handleAgentTyping);
-        socket.on('agent_online_status', handleAgentOnlineStatus);
-        socket.on('complaint_status_update', handleComplaintStatusUpdate);
+  //     //   socket.on('new_message', handleNewMessage);
+  //     //   socket.on('message_status_update', handleMessageStatusUpdate);
+  //     //   socket.on('agent_typing', handleAgentTyping);
+  //     //   socket.on('agent_online_status', handleAgentOnlineStatus);
+  //     //   socket.on('complaint_status_update', handleComplaintStatusUpdate);
 
-        return () => {
-          socket.emit('leave_complaint_room', complaintId);
-          socket.off('new_message', handleNewMessage);
-          socket.off('message_status_update', handleMessageStatusUpdate);
-          socket.off('agent_typing', handleAgentTyping);
-          socket.off('agent_online_status', handleAgentOnlineStatus);
-          socket.off('complaint_status_update', handleComplaintStatusUpdate);
-        };
-      }
-    }
-  }, [complaintId, socket]);
+  //     //   return () => {
+  //     //     socket.emit('leave_complaint_room', complaintId);
+  //     //     socket.off('new_message', handleNewMessage);
+  //     //     socket.off('message_status_update', handleMessageStatusUpdate);
+  //     //     socket.off('agent_typing', handleAgentTyping);
+  //     //     socket.off('agent_online_status', handleAgentOnlineStatus);
+  //     //     socket.off('complaint_status_update', handleComplaintStatusUpdate);
+  //     //   };
+  //     // }
+  //   }
+  // }, [complaintId, socket]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -155,13 +155,13 @@ const ComplaintDetails = () => {
       // Add message to local state immediately for better UX
       setMessages(prev => [...prev, newMessage]);
       
-      // Emit socket event
-      if (socket) {
-        socket.emit('send_message', {
-          complaintId,
-          message: newMessage
-        });
-      }
+      // // Emit socket event
+      // if (socket) {
+      //   socket.emit('send_message', {
+      //     complaintId,
+      //     message: newMessage
+      //   });
+      // }
 
       // Reset form and attachments
       messageForm.reset();

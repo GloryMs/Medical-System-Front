@@ -331,6 +331,42 @@ const supervisorService = {
     return api.get(`/supervisor-service/api/supervisors/payments/history${params}`);
   },
 
+  //Notifications:
+  getNotifications: async (userId) => {
+    return await api.get(`/supervisor-service/api/supervisors/notifications/${userId}`);
+  },
+
+  markNotificationAsRead: async (notificationId, userId) => {
+    return await api.put(
+      `/supervisor-service/api/supervisors/notifications/${notificationId}/${userId}/read`
+    );
+  },
+
+  markAllNotificationsAsRead: async (userId) => {
+    return await api.put(
+      `/supervisor-service/api/supervisors/notifications/${userId}/read-all`
+    );
+  },
+
+  deleteNotification: async (notificationId) => {
+    return await api.delete(
+      `/supervisor-service/api/supervisors/notifications/${notificationId}`
+    );
+  },
+
+  getNotificationSettings: async () => {
+    return await api.get(
+      '/supervisor-service/api/supervisors/notifications/settings'
+    );
+  },
+
+  updateNotificationSettings: async (settings) => {
+    return await api.put(
+      '/supervisor-service/api/supervisors/notifications/settings',
+      settings
+    );
+  },
+
   // ==================== Settings ====================
 
   /**
@@ -501,6 +537,50 @@ const supervisorService = {
     }
 
     return api.upload('/supervisor-service/api/supervisors/communication/send', formData);
+  },
+
+  // ==================== Complaints Management ====================
+
+  /**
+   * Get all complaints for supervisor's patients
+   * Supervisors can view and manage complaints submitted by their assigned patients
+   * @returns {Promise} List of complaints
+   */
+  getComplaints: async () => {
+    return api.get('/supervisor-service/api/admin/supervisors/complaints');
+  },
+
+  /**
+   * Get complaint by ID
+   * @param {number} complaintId - Complaint ID
+   * @returns {Promise} Complaint details
+   */
+  getComplaintById: async (complaintId) => {
+    return api.get(`/supervisor-service/api/admin/supervisors/complaints/${complaintId}`);
+  },
+
+  /**
+   * Create a complaint on behalf of a patient
+   * @param {Object} complaintData - Complaint data
+   * @param {number} complaintData.patientId - Patient ID (must be assigned to supervisor)
+   * @param {string} complaintData.complaintType - DOCTOR | SYSTEM | PAYMENT | SERVICE | OTHER
+   * @param {string} complaintData.description - Detailed description (min 20 chars)
+   * @param {string} complaintData.priority - LOW | MEDIUM | HIGH | CRITICAL
+   * @param {number} complaintData.doctorId - Optional related doctor ID
+   * @param {number} complaintData.caseId - Optional related case ID
+   * @returns {Promise} Created complaint
+   */
+  createComplaint: async (complaintData) => {
+    return api.post('/supervisor-service/api/admin/supervisors/complaints', complaintData);
+  },
+
+  /**
+   * Get complaints for a specific patient
+   * @param {number} patientId - Patient ID
+   * @returns {Promise} List of patient's complaints
+   */
+  getComplaintsByPatient: async (patientId) => {
+    return api.get(`/supervisor-service/api/admin/supervisors/complaints/patient/${patientId}`);
   },
 };
 

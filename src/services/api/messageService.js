@@ -4,6 +4,13 @@ import { api } from './apiClient';
 const messageService = {
   // ====== CONVERSATIONS ======
 
+  /**
+   * Get conversations for the current user
+   * The backend determines the perspective based on the user's role from JWT:
+   * - DOCTOR: sees patient names as otherUserName
+   * - PATIENT: sees doctor names as otherUserName
+   * - MEDICAL_SUPERVISOR: should see doctor names as otherUserName (patient perspective)
+   */
   getConversations: async (filters = {}) => {
     const params = new URLSearchParams(filters);
     return await api.get(`/messaging-service/api/messages/conversations?${params}`);
@@ -50,21 +57,21 @@ const messageService = {
     return await api.post('/messaging-service/api/messages/send', messageData);
   },
 
-  markMessageAsRead: async (messageId) => {
-    return await api.put(`/messaging-service/api/messages/${messageId}/read`);
+  markMessageAsRead: async (messageId, userId, userRole) => {
+    return await api.put(`/messaging-service/api/messages/${messageId}/read?userId=${userId}&userRole=${userRole}`);
   },
 
-  markConversationAsRead: async (conversationId) => {
-    return await api.put(`/messaging-service/api/messages/conversations/${conversationId}/mark-read`);
+  markConversationAsRead: async (conversationId, userId, userRole) => {
+    return await api.put(`/messaging-service/api/messages/conversations/${conversationId}/mark-read?userId=${userId}&userRole=${userRole}`);
   },
 
-  deleteMessage: async (messageId) => {
-    return await api.delete(`/messaging-service/api/messages/${messageId}`);
+  deleteMessage: async (messageId, userId, userRole) => {
+    return await api.delete(`/messaging-service/api/messages/${messageId}?userId=${userId}&userRole=${userRole}`);
   },
 
-  searchMessages: async (conversationId, query) => {
+  searchMessages: async (conversationId, query, userId, userRole) => {
     return await api.get(
-      `/messaging-service/api/messages/search?conversationId=${conversationId}&query=${encodeURIComponent(query)}`
+      `/messaging-service/api/messages/search?conversationId=${conversationId}&query=${encodeURIComponent(query)}&userId=${userId}&userRole=${userRole}`
     );
   },
 

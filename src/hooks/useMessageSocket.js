@@ -13,7 +13,7 @@ export const useMessageSocket = (conversationId) => {
   useEffect(() => {
     if (!conversationId || !user || !token) return;
 
-    const socket = io(process.env.REACT_APP_WS_URL || 'http://localhost:8087', {
+    const socket = io('http://172.16.1.122:8095', {
       auth: { token },
       transports: ['websocket', 'polling']
     });

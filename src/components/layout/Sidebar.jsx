@@ -74,15 +74,16 @@ const Sidebar = ({ open, onClose, userRole, userId }) => {
           { name: 'Dashboard', href: '/app/admin/dashboard', icon: Home },
           { name: 'User Management', href: '/app/admin/users', icon: Users },
           { name: 'Doctor Verification', href: '/app/admin/doctors/verification', icon: UserCheck },
+          { name: 'Supervisors Management', href: '/app/admin/supervisors', icon: UserCog },
           { name: 'Case Management', href: '/app/admin/cases', icon: FileText },
           { name: 'Payment Management', href: '/app/admin/payments', icon: CreditCard },
           { name: 'Coupons Management', href: '/app/admin/coupons', icon: Ticket},
           { name: 'Complaint Management', href: '/app/admin/complaints', icon: AlertTriangle },
+          { name: 'Notifications', href: '/app/admin/notifications', icon: Bell, badge: unreadCount },
           { name: 'System Reports', href: '/app/admin/reports', icon: BarChart3 },
           { name: 'Medical Configuration', href: '/app/admin/medical-config', icon: Database },
           { name: 'System Configuration', href: '/app/admin/configuration', icon: Settings },
           { name: 'Admin Settings', href: '/app/admin/settings', icon: Shield },
-          
         ];
 
       case 'MEDICAL_SUPERVISOR':
@@ -91,8 +92,11 @@ const Sidebar = ({ open, onClose, userRole, userId }) => {
           { name: 'My Patients', href: '/app/supervisor/patients', icon: Users },
           { name: 'All Cases', href: '/app/supervisor/cases', icon: FileText },
           { name: 'Appointments', href: '/app/supervisor/appointments', icon: Calendar },
+          { name: 'Payments', href: '/app/supervisor/payments', icon: CreditCard },
           { name: 'Coupons', href: '/app/supervisor/coupons', icon: Ticket },
           { name: 'Messages', href: '/app/supervisor/communication', icon: MessageSquare },
+          { name: 'Complaints', href: '/app/supervisor/complaints', icon: AlertTriangle },
+          { name: 'Notifications', href: '/app/supervisor/notifications', icon: Bell },
           { name: 'Profile', href: '/app/supervisor/profile', icon: User },
           { name: 'Settings', href: '/app/supervisor/settings', icon: Settings },
         ];
