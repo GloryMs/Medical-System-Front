@@ -88,6 +88,9 @@ const SupervisorAppointments = () => {
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'calendar'
   const [currentDate, setCurrentDate] = useState(new Date());
 
+  // Active tab state for status-based filtering
+  const [activeTab, setActiveTab] = useState('scheduled');
+
   // Rescheduling
   const [preferredDates, setPreferredDates] = useState(['']);
   const [pendingRescheduleRequests, setPendingRescheduleRequests] = useState([]);
@@ -441,6 +444,52 @@ const SupervisorAppointments = () => {
 
   const stats = getAppointmentStats();
 
+  // Tab configuration for status-based filtering
+  const statusTabs = [
+    {
+      id: 'scheduled',
+      label: 'Scheduled / Rescheduled',
+      statuses: ['scheduled', 'rescheduled']
+    },
+    {
+      id: 'confirmed',
+      label: 'Confirmed',
+      statuses: ['confirmed', 'payment_pending', 'in_progress']
+    },
+    {
+      id: 'completed',
+      label: 'Completed',
+      statuses: ['completed']
+    },
+    {
+      id: 'cancelled',
+      label: 'Cancelled / No Show',
+      statuses: ['cancelled', 'no_show']
+    }
+  ];
+
+  // Filter appointments by active tab
+  const getAppointmentsByTab = () => {
+    const activeTabConfig = statusTabs.find(tab => tab.id === activeTab);
+    if (!activeTabConfig) return filteredAppointments;
+
+    return filteredAppointments.filter(appointment =>
+      activeTabConfig.statuses.includes(appointment.status?.toLowerCase())
+    );
+  };
+
+  // Get count for each tab
+  const getTabCount = (tabId) => {
+    const tabConfig = statusTabs.find(tab => tab.id === tabId);
+    if (!tabConfig) return 0;
+
+    return filteredAppointments.filter(appointment =>
+      tabConfig.statuses.includes(appointment.status?.toLowerCase())
+    ).length;
+  };
+
+  const tabFilteredAppointments = getAppointmentsByTab();
+
   // Compact Calendar component
   const CompactCalendarView = () => {
     const weekDates = getWeekDates(currentDate);
@@ -783,8 +832,47 @@ const SupervisorAppointments = () => {
               viewMode === 'calendar' ? (
                 <CompactCalendarView />
               ) : (
-                <div className="space-y-4">
-                  {filteredAppointments.map((appointment) => (
+                <div>
+                  {/* Status Tabs */}
+                  <div className="border-b border-gray-200 mb-6">
+                    <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+                      {statusTabs.map((tab) => {
+                        const count = getTabCount(tab.id);
+                        const isActive = activeTab === tab.id;
+                        return (
+                          <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`
+                              whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2
+                              ${isActive
+                                ? 'border-primary-500 text-primary-600'
+                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                              }
+                            `}
+                          >
+                            <span>{tab.label}</span>
+                            <span
+                              className={`
+                                inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-medium
+                                ${isActive
+                                  ? 'bg-primary-100 text-primary-600'
+                                  : 'bg-gray-100 text-gray-600'
+                                }
+                              `}
+                            >
+                              {count}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </nav>
+                  </div>
+
+                  {/* Filtered Appointments List */}
+                  {tabFilteredAppointments.length > 0 ? (
+                    <div className="space-y-4">
+                      {tabFilteredAppointments.map((appointment) => (
                     <div
                       key={appointment.id}
                       className="bg-white border border-gray-200 rounded-lg hover:shadow-lg transition-shadow duration-200"
@@ -966,7 +1054,19 @@ const SupervisorAppointments = () => {
                         </div>
                       </div>
                     </div>
-                  ))}
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">
+                        No appointments in this category
+                      </h3>
+                      <p className="text-gray-600">
+                        There are no {statusTabs.find(t => t.id === activeTab)?.label.toLowerCase()} appointments.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )
             ) : (

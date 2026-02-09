@@ -110,6 +110,9 @@ const DoctorAppointments = () => {
   const [viewMode, setViewMode] = useState(VIEW_MODES.LIST);
   const [currentDate, setCurrentDate] = useState(new Date());
 
+  // Active tab state for status-based filtering
+  const [activeTab, setActiveTab] = useState('scheduled');
+
   // NEW: Reschedule request states
   const [rescheduleRequests, setRescheduleRequests] = useState([]);
   const [selectedRequest, setSelectedRequest] = useState(null);
@@ -471,6 +474,52 @@ const DoctorAppointments = () => {
     return rescheduleRequests.filter(req => req.appointmentId === appointmentId);
   };
 
+  // Tab configuration for status-based filtering
+  const statusTabs = [
+    {
+      id: 'scheduled',
+      label: 'Scheduled / Rescheduled',
+      statuses: ['scheduled', 'rescheduled']
+    },
+    {
+      id: 'confirmed',
+      label: 'Confirmed',
+      statuses: ['confirmed', 'payment_pending', 'in_progress']
+    },
+    {
+      id: 'completed',
+      label: 'Completed',
+      statuses: ['completed']
+    },
+    {
+      id: 'cancelled',
+      label: 'Cancelled / No Show',
+      statuses: ['cancelled', 'no_show']
+    }
+  ];
+
+  // Filter appointments by active tab
+  const getAppointmentsByTab = () => {
+    const activeTabConfig = statusTabs.find(tab => tab.id === activeTab);
+    if (!activeTabConfig) return filteredAppointments;
+
+    return filteredAppointments.filter(appointment =>
+      activeTabConfig.statuses.includes(appointment.status?.toLowerCase())
+    );
+  };
+
+  // Get count for each tab
+  const getTabCount = (tabId) => {
+    const tabConfig = statusTabs.find(tab => tab.id === tabId);
+    if (!tabConfig) return 0;
+
+    return filteredAppointments.filter(appointment =>
+      tabConfig.statuses.includes(appointment.status?.toLowerCase())
+    ).length;
+  };
+
+  const tabFilteredAppointments = getAppointmentsByTab();
+
   // Calendar view functions - MONTHLY CALENDAR
   const getMonthDates = (date) => {
     const year = date.getFullYear();
@@ -682,8 +731,6 @@ const getStatusInfo = (status) => {
 
 
 const renderListView = () => {
-  const groupedAppointments = groupAppointmentsByStatus(filteredAppointments);
-
   if (filteredAppointments.length === 0) {
     return (
       <Card>
@@ -697,38 +744,50 @@ const renderListView = () => {
   }
 
   return (
-    <div className="space-y-8">
-      {groupedAppointments.map(([status, appointments]) => {
-        const statusInfo = getStatusInfo(status);
-        
-        return (
-          <div key={status} className="space-y-4">
-            {/* Status Group Header */}
-            <div className={`flex items-center justify-between p-4 rounded-lg border-2 ${statusInfo.borderColor} ${statusInfo.bgColor}`}>
-              <div className="flex items-center space-x-3">
-                <div className={statusInfo.color}>
-                  {statusInfo.icon}
-                </div>
-                <div>
-                  <h3 className={`text-lg font-semibold ${statusInfo.color}`}>
-                    {statusInfo.label}
-                  </h3>
-                  <p className="text-sm text-gray-600">{statusInfo.description}</p>
-                </div>
-              </div>
-              <div className={`px-3 py-1 rounded-full ${statusInfo.bgColor} border ${statusInfo.borderColor}`}>
-                <span className={`text-sm font-semibold ${statusInfo.color}`}>
-                  {appointments.length} {appointments.length === 1 ? 'Appointment' : 'Appointments'}
+    <div>
+      {/* Status Tabs */}
+      <div className="border-b border-gray-200 mb-6">
+        <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+          {statusTabs.map((tab) => {
+            const count = getTabCount(tab.id);
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`
+                  whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2
+                  ${isActive
+                    ? 'border-primary-500 text-primary-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }
+                `}
+              >
+                <span>{tab.label}</span>
+                <span
+                  className={`
+                    inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-medium
+                    ${isActive
+                      ? 'bg-primary-100 text-primary-600'
+                      : 'bg-gray-100 text-gray-600'
+                    }
+                  `}
+                >
+                  {count}
                 </span>
-              </div>
-            </div>
+              </button>
+            );
+          })}
+        </nav>
+      </div>
 
-            {/* Appointments in this status group */}
-            <div className="space-y-3">
-              {appointments.map(appointment => (
+      {/* Filtered Appointments List */}
+      {tabFilteredAppointments.length > 0 ? (
+        <div className="space-y-3">
+          {tabFilteredAppointments.map(appointment => (
                 <Card 
                   key={appointment.id} 
-                  className={`hover:shadow-lg transition-all duration-200 border-l-4 ${statusInfo.borderColor}`}
+                  className="hover:shadow-lg transition-all duration-200 border-l-4 border-gray-200"
                 >
                   <div className="p-5">
                     <div className="flex items-start justify-between">
@@ -952,12 +1011,20 @@ const renderListView = () => {
                 </Card>
               ))}
             </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-};
+          ) : (
+            <div className="text-center py-12">
+              <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                No appointments in this category
+              </h3>
+              <p className="text-gray-600">
+                There are no {statusTabs.find(t => t.id === activeTab)?.label.toLowerCase()} appointments.
+              </p>
+            </div>
+          )}
+        </div>
+      );
+    };
 
 
   const renderCalendarView = () => {
