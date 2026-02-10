@@ -635,6 +635,73 @@ const adminService = {
   getSupervisorStatistics: async () => {
     return await api.get('/admin-service/api/admin/supervisors/statistics');
   },
+
+  // ==================== Doctor Document Verification ====================
+
+  /**
+   * Get enhanced verification details including documents
+   * @param {number} doctorId - Doctor ID
+   * @returns {Promise} Verification details with documents array
+   */
+  getDoctorVerificationDetailsWithDocuments: async (doctorId) => {
+    return await api.get(`/admin-service/api/admin/doctors/${doctorId}/verification-details`);
+  },
+
+  /**
+   * View a doctor's document (returns blob URL for inline viewing)
+   * @param {number} doctorId - Doctor ID
+   * @param {number} documentId - Document ID
+   */
+  viewDoctorDocument: async (doctorId, documentId) => {
+    try {
+      const response = await fetch(
+        `http://172.16.1.122:8080/admin-service/api/admin/doctors/${doctorId}/documents/${documentId}/content`,
+        {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+            'X-User-Id': JSON.parse(localStorage.getItem('user') || '{}').id || '',
+            'X-User-Role': JSON.parse(localStorage.getItem('user') || '{}').role || ''
+          }
+        }
+      );
+      if (!response.ok) throw new Error('Failed to fetch document');
+      const blob = await response.blob();
+      return window.URL.createObjectURL(blob);
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Download a doctor's document
+   * @param {number} doctorId - Doctor ID
+   * @param {number} documentId - Document ID
+   * @param {string} filename - Filename for download
+   */
+  downloadDoctorDocument: async (doctorId, documentId, filename) => {
+    return await api.download(
+      `/admin-service/api/admin/doctors/${doctorId}/documents/${documentId}/download`,
+      filename
+    );
+  },
+
+  /**
+   * Verify or reject a single document
+   * @param {number} documentId - Document ID
+   * @param {object} verificationData - { verified: boolean, verificationNotes: string }
+   */
+  verifyDoctorDocument: async (documentId, verificationData) => {
+    return await api.put(`/admin-service/api/admin/doctors/documents/${documentId}/verify`, verificationData);
+  },
+
+  /**
+   * Verify or reject all documents for a doctor
+   * @param {number} doctorId - Doctor ID
+   * @param {object} verificationData - { verified: boolean, verificationNotes: string }
+   */
+  verifyAllDoctorDocuments: async (doctorId, verificationData) => {
+    return await api.post(`/admin-service/api/admin/doctors/${doctorId}/documents/verify-all`, verificationData);
+  },
 };
 
 export default adminService;

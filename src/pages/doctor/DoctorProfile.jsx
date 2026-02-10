@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { 
+import {
   User, Stethoscope, Award, Briefcase, DollarSign, Phone,
-  Edit, Save, Upload, Camera, Star, MapPin, Mail, Building, Globe
+  Edit, Save, Upload, Camera, Star, MapPin, Mail, Building, Globe, FileCheck,
+  AlertTriangle, CheckCircle, XCircle, AlertCircle, ArrowRight
 } from 'lucide-react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
@@ -10,6 +11,7 @@ import Badge from '../../components/common/Badge';
 import { useApi } from '../../hooks/useApi';
 import doctorService from '../../services/api/doctorService';
 import commonService from '../../services/api/commonService';
+import DoctorDocumentUpload from './DoctorDocumentUpload';
 
 const DoctorProfile = () => {
   const { execute, loading } = useApi();
@@ -20,6 +22,14 @@ const DoctorProfile = () => {
     specialization: false,
     pricing: false,
     contact: false
+  });
+
+  // Document status state (loaded separately from documents API)
+  const [documentStatus, setDocumentStatus] = useState({
+    hasAllRequiredDocuments: false,
+    allDocumentsVerified: false,
+    hasPendingDocuments: false,
+    hasRejectedDocuments: false
   });
 
   // Medical configurations
@@ -41,7 +51,24 @@ const DoctorProfile = () => {
   useEffect(() => {
     loadProfile();
     loadMedicalConfigurations();
+    loadDocumentStatus();
   }, []);
+
+  const loadDocumentStatus = async () => {
+    try {
+      const data = await execute(() => doctorService.getMyDocuments());
+      setDocumentStatus({
+        hasAllRequiredDocuments: data?.hasAllRequiredDocuments || false,
+        allDocumentsVerified: data?.allDocumentsVerified || false,
+        hasPendingDocuments: data?.documents?.some(d => d.verificationStatus === 'PENDING') || false,
+        hasRejectedDocuments: data?.documents?.some(d =>
+          d.verificationStatus === 'REJECTED' || (d.verifiedByAdmin === false && d.verifiedAt)
+        ) || false
+      });
+    } catch (error) {
+      console.error('Failed to load document status:', error);
+    }
+  };
 
   useEffect(() => {
     if (profile) {
@@ -186,15 +213,106 @@ const DoctorProfile = () => {
     }
   };
 
+  // Use backend profileCompletionPercentage if available, otherwise calculate
   const getProfileCompletionPercentage = () => {
     if (!profile) return 0;
-    const fields = ['fullName', 'licenseNumber', 'primarySpecialization', 'yearsOfExperience', 
+    if (profile.profileCompletionPercentage !== undefined) {
+      return profile.profileCompletionPercentage;
+    }
+    // Fallback calculation
+    const fields = ['fullName', 'licenseNumber', 'primarySpecialization', 'yearsOfExperience',
                    'phoneNumber', 'email', 'qualifications', 'professionalSummary'];
     const completedFields = fields.filter(field => {
       const value = profile[field];
       return value && value !== '' && value !== 0;
     });
     return Math.round((completedFields.length / fields.length) * 100);
+  };
+
+  // Check if mandatory profile fields are complete (only required fields marked with *)
+  const isMandatoryProfileComplete = () => {
+    if (!profile) return false;
+    // Check only mandatory fields: fullName, licenseNumber, yearsOfExperience, primarySpecialization
+    const mandatoryFields = ['fullName', 'licenseNumber', 'primarySpecialization', 'yearsOfExperience'];
+    return mandatoryFields.every(field => {
+      const value = profile[field];
+      if (field === 'yearsOfExperience') {
+        return value !== undefined && value !== null && value !== '';
+      }
+      return value && value.toString().trim() !== '';
+    });
+  };
+
+  // Check if profile has required fields filled (for verification banner)
+  const isProfileComplete = isMandatoryProfileComplete();
+
+  // Check if documents are complete (from documentStatus state, loaded via getMyDocuments API)
+  const hasRequiredDocuments = documentStatus.hasAllRequiredDocuments;
+  const allDocumentsVerified = documentStatus.allDocumentsVerified;
+  const hasPendingDocuments = documentStatus.hasPendingDocuments;
+  const hasRejectedDocuments = documentStatus.hasRejectedDocuments;
+
+  // Determine what's missing for verification
+  const getMissingRequirements = () => {
+    const missing = [];
+    if (!isProfileComplete) {
+      missing.push({ type: 'profile', message: 'Complete your profile information' });
+    }
+    if (!hasRequiredDocuments) {
+      missing.push({ type: 'documents', message: 'Upload required verification documents (License & Certificate)' });
+    } else if (hasRejectedDocuments) {
+      missing.push({ type: 'rejected', message: 'Some documents were rejected - please delete and re-upload' });
+    } else if (hasPendingDocuments || (!allDocumentsVerified && profile?.verificationStatus !== 'VERIFIED')) {
+      missing.push({ type: 'pending', message: 'Documents are pending admin review' });
+    }
+    return missing;
+  };
+
+  // Get verification status details
+  const getVerificationStatusInfo = () => {
+    const status = profile?.verificationStatus;
+    switch (status) {
+      case 'VERIFIED':
+        return {
+          color: 'green',
+          bgColor: 'bg-green-50',
+          borderColor: 'border-green-200',
+          textColor: 'text-green-800',
+          icon: CheckCircle,
+          title: 'Account Verified',
+          message: 'Your account is fully verified. You can now accept consultations.'
+        };
+      case 'REJECTED':
+        return {
+          color: 'red',
+          bgColor: 'bg-red-50',
+          borderColor: 'border-red-200',
+          textColor: 'text-red-800',
+          icon: XCircle,
+          title: 'Verification Rejected',
+          message: profile?.rejectionReason || 'Your verification was rejected. Please review and resubmit your documents.'
+        };
+      case 'PENDING':
+        return {
+          color: 'yellow',
+          bgColor: 'bg-yellow-50',
+          borderColor: 'border-yellow-200',
+          textColor: 'text-yellow-800',
+          icon: AlertCircle,
+          title: 'Verification Pending',
+          message: 'Your account is pending verification. Complete the requirements below.'
+        };
+      default:
+        return {
+          color: 'orange',
+          bgColor: 'bg-orange-50',
+          borderColor: 'border-orange-200',
+          textColor: 'text-orange-800',
+          icon: AlertTriangle,
+          title: 'Action Required',
+          message: 'Complete your profile and upload documents to get verified.'
+        };
+    }
   };
 
   // Helper function to get filtered subspecializations based on primary specialization
@@ -241,7 +359,8 @@ const DoctorProfile = () => {
     { id: 'professional', label: 'Professional Info', icon: <User className="w-4 h-4" /> },
     { id: 'specialization', label: 'Specialization', icon: <Stethoscope className="w-4 h-4" /> },
     { id: 'pricing', label: 'Fees & Capacity', icon: <DollarSign className="w-4 h-4" /> },
-    { id: 'contact', label: 'Contact Info', icon: <Phone className="w-4 h-4" /> }
+    { id: 'contact', label: 'Contact Info', icon: <Phone className="w-4 h-4" /> },
+    { id: 'documents', label: 'Verification Documents', icon: <FileCheck className="w-4 h-4" /> }
   ];
 
 
@@ -325,6 +444,115 @@ const DoctorProfile = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="space-y-6">
+          {/* Verification Status Banner - Show if not verified */}
+          {profile?.verificationStatus !== 'VERIFIED' && (
+            (() => {
+              const statusInfo = getVerificationStatusInfo();
+              const StatusIcon = statusInfo.icon;
+              const missingRequirements = getMissingRequirements();
+
+              return (
+                <div className={`${statusInfo.bgColor} ${statusInfo.borderColor} border rounded-lg p-4`}>
+                  <div className="flex items-start space-x-3">
+                    <StatusIcon className={`w-6 h-6 ${statusInfo.textColor} flex-shrink-0 mt-0.5`} />
+                    <div className="flex-1">
+                      <h3 className={`font-semibold ${statusInfo.textColor}`}>{statusInfo.title}</h3>
+                      <p className={`text-sm ${statusInfo.textColor} mt-1`}>{statusInfo.message}</p>
+
+                      {/* Missing Requirements List */}
+                      {missingRequirements.length > 0 && profile?.verificationStatus !== 'REJECTED' && (
+                        <div className="mt-3 space-y-2">
+                          <p className={`text-sm font-medium ${statusInfo.textColor}`}>To get verified, please:</p>
+                          <ul className="space-y-2">
+                            {missingRequirements.map((req, index) => (
+                              <li key={index} className="flex items-center space-x-2">
+                                {req.type === 'profile' && !isProfileComplete && (
+                                  <>
+                                    <XCircle className="w-4 h-4 text-red-500" />
+                                    <span className={`text-sm ${statusInfo.textColor}`}>{req.message}</span>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="text-primary-600 hover:text-primary-700 p-0 h-auto"
+                                      onClick={() => setActiveTab('professional')}
+                                    >
+                                      Edit Profile <ArrowRight className="w-3 h-3 ml-1" />
+                                    </Button>
+                                  </>
+                                )}
+                                {req.type === 'documents' && (
+                                  <>
+                                    <XCircle className="w-4 h-4 text-red-500" />
+                                    <span className={`text-sm ${statusInfo.textColor}`}>{req.message}</span>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="text-primary-600 hover:text-primary-700 p-0 h-auto"
+                                      onClick={() => setActiveTab('documents')}
+                                    >
+                                      Upload Documents <ArrowRight className="w-3 h-3 ml-1" />
+                                    </Button>
+                                  </>
+                                )}
+                                {req.type === 'pending' && (
+                                  <>
+                                    <AlertCircle className="w-4 h-4 text-yellow-500" />
+                                    <span className={`text-sm ${statusInfo.textColor}`}>{req.message}</span>
+                                  </>
+                                )}
+                                {req.type === 'rejected' && (
+                                  <>
+                                    <XCircle className="w-4 h-4 text-red-500" />
+                                    <span className={`text-sm ${statusInfo.textColor}`}>{req.message}</span>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="text-primary-600 hover:text-primary-700 p-0 h-auto"
+                                      onClick={() => setActiveTab('documents')}
+                                    >
+                                      Fix Documents <ArrowRight className="w-3 h-3 ml-1" />
+                                    </Button>
+                                  </>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Rejection reason details */}
+                      {profile?.verificationStatus === 'REJECTED' && (
+                        <div className="mt-3">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setActiveTab('documents')}
+                            className="text-red-700 border-red-300 hover:bg-red-100"
+                          >
+                            Review & Resubmit Documents <ArrowRight className="w-4 h-4 ml-1" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()
+          )}
+
+          {/* Success Banner for Verified Accounts */}
+          {profile?.verificationStatus === 'VERIFIED' && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="flex items-center space-x-3">
+                <CheckCircle className="w-6 h-6 text-green-600" />
+                <div>
+                  <h3 className="font-semibold text-green-800">Account Verified</h3>
+                  <p className="text-sm text-green-700">Your account is fully verified. You can accept consultations and cases.</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'professional' && (
             <Card title="Professional Information">
               <form onSubmit={professionalForm.handleSubmit(handleProfessionalInfoSubmit)}>
@@ -692,6 +920,10 @@ const DoctorProfile = () => {
                 </div>
               </form>
             </Card>
+          )}
+
+          {activeTab === 'documents' && (
+            <DoctorDocumentUpload onDocumentsChange={() => { loadProfile(); loadDocumentStatus(); }} />
           )}
         </div>
       </div>

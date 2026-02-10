@@ -666,6 +666,103 @@ const doctorService = {
   getSymptoms: async () => {
     return await api.get('/doctor-service/api/admin/config/symptoms');
   },
+
+  // ========== VERIFICATION DOCUMENTS ==========
+
+  /**
+   * Upload a verification document
+   * @param {File} file - The file to upload
+   * @param {string} documentType - Type: 'LICENSE', 'CERTIFICATE', or 'EXPERIENCE'
+   * @param {string} description - Optional description
+   * @param {function} onUploadProgress - Progress callback
+   */
+  uploadDocument: async (file, documentType, description = '', onUploadProgress) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('documentType', documentType);
+    if (description) {
+      formData.append('description', description);
+    }
+    return await api.upload('/doctor-service/api/doctors/profile/documents/upload', formData, onUploadProgress);
+  },
+
+  /**
+   * Get all uploaded documents for the current doctor
+   * Maps backend response to expected UI format
+   */
+  getMyDocuments: async () => {
+    const response = await api.get('/doctor-service/api/doctors/profile/documents');
+
+    // Map backend document format to UI expected format
+    if (response && response.documents) {
+      response.documents = response.documents.map(doc => ({
+        ...doc,
+        // Map verifiedByAdmin to verificationStatus if not already set
+        verificationStatus: doc.verificationStatus || (
+          doc.verifiedByAdmin === true ? 'VERIFIED' :
+          doc.verifiedByAdmin === false && doc.verifiedAt ? 'REJECTED' :
+          doc.verifiedAt ? 'PENDING' : 'UPLOADED'
+        )
+      }));
+
+      // Recalculate allDocumentsVerified based on actual verification status
+      const requiredDocs = response.documents.filter(d =>
+        d.documentType === 'LICENSE' || d.documentType === 'CERTIFICATE'
+      );
+      response.allDocumentsVerified = requiredDocs.length >= 2 &&
+        requiredDocs.every(d => d.verificationStatus === 'VERIFIED' || d.verifiedByAdmin === true);
+    }
+
+    return response;
+  },
+
+  /**
+   * Download a document
+   * @param {number} documentId - Document ID
+   * @param {string} filename - Filename for download
+   */
+  downloadDocument: async (documentId, filename) => {
+    return await api.download(`/doctor-service/api/doctors/profile/documents/${documentId}/download`, filename);
+  },
+
+  /**
+   * View a document (returns blob URL for inline viewing)
+   * @param {number} documentId - Document ID
+   */
+  viewDocument: async (documentId) => {
+    try {
+      const response = await fetch(
+        `http://172.16.1.122:8080/doctor-service/api/doctors/profile/documents/${documentId}/view`,
+        {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+            'X-User-Id': JSON.parse(localStorage.getItem('user') || '{}').id || ''
+          }
+        }
+      );
+      if (!response.ok) throw new Error('Failed to fetch document');
+      const blob = await response.blob();
+      return window.URL.createObjectURL(blob);
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Delete a document
+   * @param {number} documentId - Document ID
+   */
+  deleteDocument: async (documentId) => {
+    return await api.delete(`/doctor-service/api/doctors/profile/documents/${documentId}`);
+  },
+
+  /**
+   * Submit documents for admin review
+   * @param {string} additionalNotes - Optional notes for the admin
+   */
+  submitDocumentsForReview: async (additionalNotes = '') => {
+    return await api.post('/doctor-service/api/doctors/profile/documents/submit', { additionalNotes });
+  },
 };
 
 export default doctorService;

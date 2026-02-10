@@ -37,11 +37,11 @@ import Button from '../../components/common/Button';
 import Badge, { StatusBadge } from '../../components/common/Badge';
 import Modal, { ConfirmModal, FormModal } from '../../components/common/Modal';
 import DataTable from '../../components/common/DataTable';
+import DocumentReviewSection from '../../components/admin/DocumentReviewSection';
 import { useAuth } from '../../hooks/useAuth';
 import { useApi } from '../../hooks/useApi';
 import { useUI } from '../../hooks/useUI';
 import adminService from '../../services/api/adminService';
-import { render } from '@testing-library/react';
 
 // Validation schemas
 const verificationSchema = yup.object({
@@ -184,10 +184,16 @@ const DoctorVerification = () => {
     setShowDocumentViewer(true);
   };
 
-  // Get verification details
+  // Get verification details (enhanced with documents)
   const handleGetDetails = async (doctorId) => {
     try {
-      const response = await execute(() => adminService.getDoctorVerificationDetails(doctorId));
+      // Try enhanced endpoint first, fall back to basic endpoint
+      let response;
+      try {
+        response = await execute(() => adminService.getDoctorVerificationDetailsWithDocuments(doctorId));
+      } catch {
+        response = await execute(() => adminService.getDoctorVerificationDetails(doctorId));
+      }
       if (response) {
         setSelectedDoctor(response);
         setShowVerificationModal(true);
@@ -195,6 +201,42 @@ const DoctorVerification = () => {
     } catch (error) {
       showToast('Failed to load doctor details', 'error');
     }
+  };
+
+  // Update local state after document verification (avoids calling non-existent API endpoint)
+  const handleDocumentVerified = (verificationInfo) => {
+    if (!selectedDoctor || !verificationInfo) return;
+
+    // Update the documents in local state
+    setSelectedDoctor(prev => {
+      if (!prev || !prev.documents) return prev;
+
+      let updatedDocuments;
+      if (verificationInfo.bulk) {
+        // Bulk update: update all pending documents
+        updatedDocuments = prev.documents.map(doc => ({
+          ...doc,
+          verificationStatus: verificationInfo.newStatus,
+          verificationNotes: verificationInfo.verificationNotes
+        }));
+      } else {
+        // Single document update
+        updatedDocuments = prev.documents.map(doc =>
+          doc.id === verificationInfo.documentId
+            ? {
+                ...doc,
+                verificationStatus: verificationInfo.newStatus,
+                verificationNotes: verificationInfo.verificationNotes
+              }
+            : doc
+        );
+      }
+
+      return { ...prev, documents: updatedDocuments };
+    });
+
+    // Refresh the pending doctors list
+    loadPendingVerifications();
   };
 
   // Table columns configuration
@@ -245,7 +287,7 @@ const DoctorVerification = () => {
           variant="ghost"
           size="sm"
           icon={<FileText className="w-4 h-4" />}
-          onClick={() => handleViewDocument(doctor.documentsUrl, 'credentials')}
+          onClick={() => handleGetDetails(doctor.doctorId)}
         >
           View Documents
         </Button>
@@ -423,78 +465,88 @@ const DoctorVerification = () => {
               </div>
             </div>
 
-            {/* Credentials Section */}
-            <div>
-              <h4 className="text-lg font-medium text-gray-900 mb-3 flex items-center">
-                <GraduationCap className="w-5 h-5 mr-2 text-primary-600" />
-                Submitted Credentials
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Medical License */}
-                <div className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium text-gray-900">Medical License</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      icon={<Eye className="w-4 h-4" />}
-                      onClick={() => handleViewDocument(selectedDoctor.documentsUrl, 'license')}
-                    >
-                      View
-                    </Button>
+            {/* Verification Documents Section */}
+            {selectedDoctor.documents && selectedDoctor.documents.length > 0 ? (
+              <DocumentReviewSection
+                doctorId={selectedDoctor.doctorId}
+                documents={selectedDoctor.documents}
+                onDocumentVerified={handleDocumentVerified}
+                loading={loading}
+              />
+            ) : (
+              /* Legacy Credentials Section - shown when no documents array */
+              <div>
+                <h4 className="text-lg font-medium text-gray-900 mb-3 flex items-center">
+                  <GraduationCap className="w-5 h-5 mr-2 text-primary-600" />
+                  Submitted Credentials
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Medical License */}
+                  <div className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium text-gray-900">Medical License</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon={<Eye className="w-4 h-4" />}
+                        onClick={() => handleViewDocument(selectedDoctor.documentsUrl, 'license')}
+                      >
+                        View
+                      </Button>
+                    </div>
+                    <p className="text-sm text-gray-600">License #{selectedDoctor.licenseNumber}</p>
                   </div>
-                  <p className="text-sm text-gray-600">License #{selectedDoctor.licenseNumber}</p>
-                </div>
 
-                {/* Medical Degree */}
-                <div className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium text-gray-900">Medical Degree</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      icon={<Eye className="w-4 h-4" />}
-                      onClick={() => handleViewDocument(selectedDoctor.documentsUrl, 'degree')}
-                    >
-                      View
-                    </Button>
+                  {/* Medical Degree */}
+                  <div className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium text-gray-900">Medical Degree</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon={<Eye className="w-4 h-4" />}
+                        onClick={() => handleViewDocument(selectedDoctor.documentsUrl, 'degree')}
+                      >
+                        View
+                      </Button>
+                    </div>
+                    <p className="text-sm text-gray-600">Medical degree certificate</p>
                   </div>
-                  <p className="text-sm text-gray-600">Medical degree certificate</p>
-                </div>
 
-                {/* Certifications */}
-                <div className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium text-gray-900">Certifications</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      icon={<Eye className="w-4 h-4" />}
-                      onClick={() => handleViewDocument(selectedDoctor.documentsUrl, 'certifications')}
-                    >
-                      View
-                    </Button>
+                  {/* Certifications */}
+                  <div className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium text-gray-900">Certifications</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon={<Eye className="w-4 h-4" />}
+                        onClick={() => handleViewDocument(selectedDoctor.documentsUrl, 'certifications')}
+                      >
+                        View
+                      </Button>
+                    </div>
+                    <p className="text-sm text-gray-600">Professional certifications</p>
                   </div>
-                  <p className="text-sm text-gray-600">Professional certifications</p>
-                </div>
 
-                {/* Identity Document */}
-                <div className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium text-gray-900">Identity Document</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      icon={<Eye className="w-4 h-4" />}
-                      onClick={() => handleViewDocument(selectedDoctor.documentsUrl, 'identity')}
-                    >
-                      View
-                    </Button>
+                  {/* Identity Document */}
+                  <div className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium text-gray-900">Identity Document</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon={<Eye className="w-4 h-4" />}
+                        onClick={() => handleViewDocument(selectedDoctor.documentsUrl, 'identity')}
+                      >
+                        View
+                      </Button>
+                    </div>
+                    <p className="text-sm text-gray-600">Government-issued ID</p>
                   </div>
-                  <p className="text-sm text-gray-600">Government-issued ID</p>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Verification Decision Form */}
             <div className="space-y-4">
@@ -619,20 +671,48 @@ const DoctorVerification = () => {
                 </Button>
               </div>
             </div>
-            
+
             {/* Document Preview */}
-            <div className="bg-gray-100 rounded-lg p-4 min-h-96 flex items-center justify-center">
-              <div className="text-center">
-                <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600 mb-4">Document preview will be displayed here</p>
-                <Button
-                  variant="primary"
-                  icon={<ExternalLink className="w-4 h-4" />}
-                  onClick={() => window.open(selectedDocument.url, '_blank')}
-                >
-                  View Full Document
-                </Button>
-              </div>
+            <div className="bg-gray-100 rounded-lg min-h-96">
+              {selectedDocument.url ? (
+                selectedDocument.url.toLowerCase().includes('.pdf') ? (
+                  <iframe
+                    src={selectedDocument.url}
+                    className="w-full h-[70vh] border-0 rounded-lg"
+                    title={`${selectedDocument.type} Document`}
+                  />
+                ) : (
+                  <div className="flex items-center justify-center p-4">
+                    <img
+                      src={selectedDocument.url}
+                      alt={`${selectedDocument.type} Document`}
+                      className="max-w-full max-h-[70vh] object-contain rounded-lg"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'flex';
+                      }}
+                    />
+                    <div className="hidden flex-col items-center justify-center text-center">
+                      <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-600 mb-4">Unable to preview document</p>
+                      <Button
+                        variant="primary"
+                        icon={<ExternalLink className="w-4 h-4" />}
+                        onClick={() => window.open(selectedDocument.url, '_blank')}
+                      >
+                        Open in New Tab
+                      </Button>
+                    </div>
+                  </div>
+                )
+              ) : (
+                <div className="flex items-center justify-center h-96">
+                  <div className="text-center">
+                    <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600 mb-4">No document URL available</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
