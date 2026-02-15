@@ -620,21 +620,24 @@ const patientService = {
   },
 
   // Notifications
-  getNotifications: async (userId, filters = {}) => {
-    const params = new URLSearchParams(filters);
-    return await api.get(`/patient-service/api/patients/notifications/${userId}`);
+  getNotifications: async (userId) => {
+    return await api.get(`/patient-service/api/patients/${userId}/notifications`);
+  },
+
+  getUnreadNotifications: async (userId) => {
+    return await api.get(`/patient-service/api/patients/${userId}/notifications/unread`);
   },
 
   markNotificationAsRead: async (notificationId, userId) => {
-  return await api.put(`/patient-service/api/patients/notifications/${notificationId}/${userId}/read?`);
+    return await api.put(
+      `/patient-service/api/patients/notifications/${notificationId}/read?userId=${userId}`
+    );
   },
 
   markAllNotificationsAsRead: async (userId) => {
-    return await api.put(`/patient-service/api/patients/notifications/${userId}/read-all`);
-  },
-
-  deleteNotification: async (notificationId) => {
-    return await api.delete(`/patient-service/api/patients/notifications/${notificationId}`);
+    return await api.put(
+      `/patient-service/api/patients/${userId}/notifications/read-all`
+    );
   },
 
   updateNotificationSettings: async (settings) => {

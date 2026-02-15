@@ -191,7 +191,7 @@ const AdminNotifications = () => {
   const markAsRead = async (notificationIds, receiverIds) => {
     try {
       await execute(() =>
-        adminService.markNotificationAsRead(notificationIds, receiverIds),
+        adminService.markNotificationAsRead(notificationIds[0], user.id),
       );
       setNotifications((prev) =>
         prev.map((n) =>

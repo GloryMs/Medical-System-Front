@@ -617,18 +617,24 @@ const doctorService = {
   },
 
   // Notifications
+  getNotifications: async (userId) => {
+    return await api.get(`/doctor-service/api/doctors/${userId}/notifications`);
+  },
 
-  getNotifications: async (userId, filters = {}) => {
-    const params = new URLSearchParams(filters);
-    return await api.get(`/doctor-service/api/doctors/notifications/${userId}`);
+  getUnreadNotifications: async (userId) => {
+    return await api.get(`/doctor-service/api/doctors/${userId}/notifications/unread`);
   },
 
   markNotificationAsRead: async (notificationId, userId) => {
-  return await api.put(`/doctor-service/api/doctors/notifications/${notificationId}/${userId}/read?`);
+    return await api.put(
+      `/doctor-service/api/doctors/notifications/${notificationId}/read?userId=${userId}`
+    );
   },
 
   markAllNotificationsAsRead: async (userId) => {
-    return await api.put(`/doctor-service/api/doctors/notifications/${userId}/read-all`);
+    return await api.put(
+      `/doctor-service/api/doctors/${userId}/notifications/read-all`
+    );
   },
 
   getNotificationSettings: async () => {

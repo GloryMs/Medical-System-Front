@@ -151,7 +151,7 @@ const SupervisorNotifications = () => {
 
   const markAsRead = async (notificationIds, receiverIds) => {
     try {
-      await execute(() => supervisorService.markNotificationAsRead(notificationIds, receiverIds));
+      await execute(() => supervisorService.markNotificationAsRead(notificationIds[0], user.id));
       setNotifications(prev =>
         prev.map(n => notificationIds.includes(n.id) ? { ...n, isRead: true } : n)
       );

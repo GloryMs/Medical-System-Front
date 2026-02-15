@@ -148,7 +148,7 @@ const DoctorNotifications = () => {
 
   const markAsRead = async (notificationIds, receiverIds) => {
     try {
-      await execute(() => doctorService.markNotificationAsRead(notificationIds, receiverIds));
+      await execute(() => doctorService.markNotificationAsRead(notificationIds[0], user.id));
       setNotifications(prev =>
         prev.map(n => notificationIds.includes(n.id) ? { ...n, isRead: true } : n)
       );

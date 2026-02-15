@@ -331,26 +331,24 @@ const supervisorService = {
     return api.get(`/supervisor-service/api/supervisors/payments/history${params}`);
   },
 
-  //Notifications:
+  // Notifications
   getNotifications: async (userId) => {
-    return await api.get(`/supervisor-service/api/supervisors/notifications/${userId}`);
+    return await api.get(`/supervisor-service/api/supervisors/${userId}/notifications`);
+  },
+
+  getUnreadNotifications: async (userId) => {
+    return await api.get(`/supervisor-service/api/supervisors/${userId}/notifications/unread`);
   },
 
   markNotificationAsRead: async (notificationId, userId) => {
     return await api.put(
-      `/supervisor-service/api/supervisors/notifications/${notificationId}/${userId}/read`
+      `/supervisor-service/api/supervisors/notifications/${notificationId}/read?userId=${userId}`
     );
   },
 
   markAllNotificationsAsRead: async (userId) => {
     return await api.put(
-      `/supervisor-service/api/supervisors/notifications/${userId}/read-all`
-    );
-  },
-
-  deleteNotification: async (notificationId) => {
-    return await api.delete(
-      `/supervisor-service/api/supervisors/notifications/${notificationId}`
+      `/supervisor-service/api/supervisors/${userId}/notifications/read-all`
     );
   },
 
